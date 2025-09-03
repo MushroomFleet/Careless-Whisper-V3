@@ -1,8 +1,26 @@
 # Careless Whisper V3
 
+**"Care Less" - Inobtrusive Augments!**
+
 **Dual-Mode Voice-to-Text & AI Assistant for Windows** • Silent system tray interface • Built with .NET 8.0
 
 Transform your voice into text instantly OR get AI-powered responses with simple hotkeys. No windows, no interruptions—just speak and get results anywhere.
+
+## 🚀 Get Started Now - Download V3.0.1
+
+**Ready to boost your productivity?** 
+
+👉 **[Download Latest Portable Release (v3.0.1)](../../releases/latest)**
+
+**What you get:**
+- ⚡ **Instant Setup** - Single portable executable, no installer needed
+- 🎯 **Super Lightweight** - Only 120MB total (including tiny GGML weights)
+- 🛡️ **Local AI Processing** - Whisper.net keeps your voice private
+- 🔧 **Just Need .NET 8.0** - Free Microsoft runtime (quick install)
+
+Extract, double-click, and start speaking! The app lives silently in your system tray.
+
+---
 
 ## ✨ Core Features
 
@@ -10,49 +28,33 @@ Transform your voice into text instantly OR get AI-powered responses with simple
 - **F1**: **Speech-to-Text** → Hold, speak, release → Instant paste
 - **Shift+F2**: **Speech-Prompt-to-AI** → Voice your question → Get AI response pasted
 
-### 🤖 AI Integration
-- **OpenRouter API**: Access to 100+ cutting-edge LLM models
+### 🤖 AI Integration with 300+ Models
+- **OpenRouter API**: Access to **300+ cutting-edge LLM models**
+- **GPT-4, Claude, Gemini, Llama** and hundreds more
 - **Customizable Prompts**: Configure system behavior for your needs
 - **Streaming Responses**: Real-time AI output for faster interaction
 
+### 📋 Revived Transcription History
+- **System Tray Access** - Right-click tray icon → View transcription history
+- **Session Logging** - Track all your voice-to-text conversions
+- **Search & Review** - Find past transcriptions quickly
+- **Privacy Controls** - Enable/disable history as needed
+
+### 🔊 Custom Audio Notifications
+- **Smart Feedback** - Know when recording starts/stops
+- **Custom Sounds** - Use your own audio files
+- **Per-Mode Alerts** - Different sounds for transcription vs AI responses
+- **Volume Control** - Adjust to your preference
+
 ### 🔒 Privacy & Security
-- **Local Speech Processing**: Whisper runs entirely on your machine
+- **Local Speech Processing**: Whisper runs entirely on your machine (120MB GGML weights)
 - **Encrypted API Storage**: Secure OpenRouter key management via Windows DPAPI
 - **No Data Sharing**: Your voice stays private (except for LLM requests you explicitly make)
 
 ### 👻 Silent Operation
 - **System Tray Interface**: Lives quietly in background
-- **Audio Notifications**: Optional sound feedback for operations
 - **Zero Interruption**: Works seamlessly with any Windows application
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Windows 10/11
-- .NET 8.0 Runtime
-- Any microphone
-- OpenRouter API key (for AI features - get free credits at [openrouter.ai](https://openrouter.ai))
-
-### Installation
-1. Download the latest V3.0 release
-2. Extract and run `CarelessWhisperV2.exe`
-3. The app minimizes to your system tray (look for the icon near your clock)
-4. Right-click tray icon → Settings → OpenRouter tab → Add your API key
-
-### Usage
-
-#### Speech-to-Text (Traditional Mode)
-1. **Hold F1** and speak clearly
-2. **Release F1** when finished
-3. **Paste anywhere** with Ctrl+V
-*Perfect for dictation, quick notes, and direct transcription*
-
-#### Speech-Prompt-to-AI (New V3.0 Mode)
-1. **Hold Shift+F2** and ask your question
-2. **Release keys** when finished speaking
-3. **Wait briefly** for AI processing
-4. **Paste the AI response** with Ctrl+V
-*Perfect for research, writing assistance, code help, and creative tasks*
+- **Minimal Resource Usage**: Efficient despite powerful AI capabilities
 
 ## 🎯 Perfect For
 
@@ -62,11 +64,21 @@ Transform your voice into text instantly OR get AI-powered responses with simple
 - **Accessibility**: Voice input for any Windows application
 
 ### AI-Powered Assistance
-- **Research**: Ask questions and get instant answers
+- **Research**: Ask questions and get instant answers from 300+ models
 - **Writing**: Get help with content, grammar, style
 - **Coding**: Voice-ask programming questions
 - **Creative**: Brainstorm ideas, get suggestions
 - **Productivity**: Quick calculations, translations, explanations
+
+## 📋 Prerequisites
+
+### Required
+- **Windows 10/11** (64-bit)
+- **.NET 8.0 Runtime** ([Download free from Microsoft](https://dotnet.microsoft.com/download/dotnet/8.0))
+- **Any microphone** (built-in or external)
+
+### Optional
+- **OpenRouter API key** (for AI features - get free credits at [openrouter.ai](https://openrouter.ai))
 
 ## ⚙️ Configuration
 
@@ -94,7 +106,7 @@ Right-click the system tray icon to access comprehensive settings:
 
 ### OpenRouter (V3.0)
 - **API Key Management**: Secure encrypted storage
-- **Model Selection**: Choose from 100+ LLM models
+- **Model Selection**: Choose from **300+ LLM models**
 - **System Prompts**: Customize AI behavior
 - **Advanced Parameters**: Temperature, max tokens, streaming
 
@@ -104,34 +116,42 @@ Right-click the system tray icon to access comprehensive settings:
 - **Volume Control**: Adjust notification volume
 - **Per-Mode Settings**: Different sounds for speech-to-text vs. AI responses
 
+### Transcription History (V3.0.1)
+- **History Management**: View, search, and manage past transcriptions
+- **Data Retention**: Configure how long to keep history
+- **Export Options**: Save transcriptions to files
+- **Privacy Controls**: Clear history or disable logging
+
 ## 🔧 Technical Details
 
 ### Architecture
 - **Framework**: Clean .NET 8.0 with dependency injection
 - **Audio Processing**: NAudio for high-quality recording
-- **Speech Recognition**: Whisper.NET for local transcription
+- **Speech Recognition**: Whisper.NET with GGML weights (120MB total)
 - **Global Hotkeys**: SharpHook for system-wide key detection
-- **AI Integration**: OpenRouter API with HTTP client
+- **AI Integration**: OpenRouter API with HTTP client for 300+ models
 - **Secure Storage**: Windows DPAPI for API key encryption
 - **UI Framework**: Modern WPF with system tray (H.NotifyIcon)
 
 ### Whisper Models (Local Processing)
-- **Tiny**: Fastest, good for simple speech (~39M parameters)
-- **Base**: Balanced speed/accuracy (recommended, ~74M parameters)
-- **Small**: Better accuracy (~244M parameters)
-- **Medium**: High accuracy (~769M parameters)
+- **Tiny**: Fastest, good for simple speech (~39M parameters, ~39MB)
+- **Base**: Balanced speed/accuracy (recommended, ~74M parameters, ~74MB)
+- **Small**: Better accuracy (~244M parameters, ~244MB)
+- **Medium**: High accuracy (~769M parameters, ~769MB)
+
+*Despite the power, total installation remains lightweight at ~120MB with tiny model included.*
 
 ### OpenRouter Models (Cloud Processing)
-Access to 100+ models including:
+Access to **300+ models** including:
 - **GPT-4o, Claude-3.5, Gemini Pro** for premium quality
-- **Llama, Mistral, Qwen** for cost-effective processing
-- **Specialized models** for coding, reasoning, creative tasks
+- **Llama, Mistral, Qwen, Command** for cost-effective processing
+- **Specialized models** for coding, reasoning, creative tasks, and more
 
 ## 🛠️ Build from Source
 
 ```bash
-git clone https://github.com/[username]/careless-whisper-v3
-cd careless-whisper-v3
+git clone https://github.com/MushroomFleet/careless-whisper-V2
+cd careless-whisper-V2
 dotnet build CarelessWhisperV2.csproj
 dotnet run --project CarelessWhisperV2.csproj
 ```
@@ -158,19 +178,21 @@ Requires .NET 8.0 SDK for development.
 
 ## 📝 Status
 
-**Current Version**: 3.0.0 - Major feature release
+**Current Version**: **3.0.1** - Latest stable release
 
 ✅ **Working**: 
 - Dual-mode speech processing (local + AI)
 - Complete settings UI with all configuration options
-- Secure OpenRouter integration with 100+ models
-- Audio notification system
+- Secure OpenRouter integration with **300+ models**
+- Custom audio notification system
+- **Revived transcription history** with search and management
 - Enhanced transcription with multiple Whisper models
 
-🎯 **V3.0 Achievements**:
+🎯 **V3.0.1 Achievements**:
 - **Dual Hotkey System**: F1 for direct transcription, Shift+F2 for AI assistance
-- **OpenRouter Integration**: Access to cutting-edge LLM models
-- **Audio Notifications**: Configurable sound feedback
+- **300+ OpenRouter Models**: Massive selection of cutting-edge LLMs
+- **Transcription History Revival**: Complete session logging with system tray access
+- **Custom Audio Notifications**: Configurable sound feedback
 - **Enhanced Security**: Encrypted API key management
 - **Comprehensive Settings**: Full-featured configuration UI
 
@@ -198,10 +220,10 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 
 ## 📄 License
 
-[License to be determined]
+See License File in Project.
 
 ---
 
 **Made for developers, writers, and anyone who wants both instant transcription AND AI assistance at their fingertips.**
 
-*V3.0: Where voice meets intelligence.*
+*V3.0.1: Where voice meets intelligence - Care Less, Achieve More.*
