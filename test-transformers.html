@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformers.js Test</title>
+</head>
+<body>
+    <h1>Transformers.js Whisper Test</h1>
+    <button id="testBtn">Test Transformers.js</button>
+    <div id="output"></div>
+
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.2/dist/transformers.min.js';
+
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Testing Transformers.js...</p>';
+
+            try {
+                console.log('[TEST] Creating pipeline...');
+                output.innerHTML += '<p>Creating pipeline...</p>';
+                
+                const transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+                
+                console.log('[TEST] Pipeline created successfully:', transcriber);
+                output.innerHTML += '<p>✓ Pipeline created successfully</p>';
+                output.innerHTML += '<p>Pipeline type: ' + typeof transcriber + '</p>';
+                
+                // Test with a simple audio file (we'll create a basic one)
+                console.log('[TEST] Testing pipeline...');
+                output.innerHTML += '<p>Testing with sample audio...</p>';
+                
+                // Create a simple test audio blob
+                const audioContext = new AudioContext();
+                const buffer = audioContext.createBuffer(1, 16000, 16000); // 1 second of silence
+                const channelData = buffer.getChannelData(0);
+                for (let i = 0; i < channelData.length; i++) {
+                    channelData[i] = 0; // silence
+                }
+                
+                // Convert to WAV blob
+                const wav = audioBufferToWav(buffer);
+                const blob = new Blob([wav], { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                
+                console.log('[TEST] Created test audio URL:', url);
+                output.innerHTML += '<p>Created test audio blob (' + blob.size + ' bytes)</p>';
+                
+                // Test transcription
+                const result = await transcriber(url);
+                console.log('[TEST] Transcription result:', result);
+                output.innerHTML += '<p>✓ Transcription completed</p>';
+                output.innerHTML += '<p>Result: ' + JSON.stringify(result, null, 2) + '</p>';
+                
+                URL.revokeObjectURL(url);
+                
+            } catch (error) {
+                console.error('[TEST] Error:', error);
+                output.innerHTML += '<p>✗ Error: ' + error.message + '</p>';
+                output.innerHTML += '<p>Stack: ' + error.stack + '</p>';
+            }
+        });
+
+        // Helper function to convert AudioBuffer to WAV
+        function audioBufferToWav(buffer) {
+            const length = buffer.length;
+            const arrayBuffer = new ArrayBuffer(44 + length * 2);
+            const view = new DataView(arrayBuffer);
+            
+            // Write WAV header
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+            
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + length * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, buffer.sampleRate, true);
+            view.setUint32(28, buffer.sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, length * 2, true);
+            
+            // Convert float32 to int16
+            const channelData = buffer.getChannelData(0);
+            let offset = 44;
+            for (let i = 0; i < length; i++) {
+                const sample = Math.max(-1, Math.min(1, channelData[i]));
+                view.setInt16(offset, sample * 0x7FFF, true);
+                offset += 2;
+            }
+            
+            return arrayBuffer;
+        }
+    </script>
+</body>
+</html>

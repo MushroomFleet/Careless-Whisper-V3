@@ -1,0 +1,76 @@
+﻿<Window x:Class="CarelessWhisperV2.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
+        Title="Careless Whisper V2" 
+        Height="400" 
+        Width="600"
+        WindowState="Minimized"
+        ShowInTaskbar="False">
+    
+    <Window.Resources>
+        <ContextMenu x:Key="TrayMenu">
+            <MenuItem Header="Show Application" Click="ShowApplication_Click"/>
+            <MenuItem Header="Settings" Click="Settings_Click"/>
+            <Separator/>
+            <MenuItem Header="Start Recording Test" Click="StartTest_Click"/>
+            <MenuItem Header="View Transcription History" Click="ViewHistory_Click"/>
+            <Separator/>
+            <MenuItem Header="Exit" Click="Exit_Click"/>
+        </ContextMenu>
+    </Window.Resources>
+    
+    <Grid>
+        <tb:TaskbarIcon 
+            x:Name="TrayIcon"
+            ToolTipText="Careless Whisper V2 - Push-to-Talk Transcriber"
+            ContextMenu="{StaticResource TrayMenu}"
+            MenuActivation="RightClick"
+            TrayLeftMouseUp="TrayIcon_LeftMouseUp"
+            Visibility="Visible"/>
+        
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" 
+                       Text="Careless Whisper V2" 
+                       FontSize="24" 
+                       FontWeight="Bold" 
+                       HorizontalAlignment="Center" 
+                       Margin="20"/>
+            
+            <StackPanel DockPanel.Dock="Top" Margin="20">
+                <TextBlock Text="Status:" FontWeight="Bold" Margin="0,0,0,5"/>
+                <TextBlock x:Name="StatusText" Text="Initializing..." Margin="0,0,0,10"/>
+                
+                <TextBlock Text="Push-to-Talk:" FontWeight="Bold" Margin="0,0,0,5"/>
+                <TextBlock x:Name="HotkeyText" Text="F1 (Default)" Margin="0,0,0,10"/>
+                
+                <TextBlock Text="Instructions:" FontWeight="Bold" Margin="0,0,0,5"/>
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,10">
+                    Hold down the push-to-talk key and speak. Release to stop recording. 
+                    The transcribed text will be automatically copied to your clipboard.
+                </TextBlock>
+                
+                <Button x:Name="SettingsButton" 
+                        Content="Open Settings" 
+                        Click="Settings_Click" 
+                        Width="120" 
+                        Height="30" 
+                        Margin="0,10,0,5"/>
+                
+                <Button x:Name="HideButton" 
+                        Content="Hide to System Tray" 
+                        Click="Hide_Click" 
+                        Width="120" 
+                        Height="30" 
+                        Margin="0,5,0,0"/>
+            </StackPanel>
+            
+            <TextBlock DockPanel.Dock="Bottom" 
+                       Text="Right-click the system tray icon for quick access to features." 
+                       HorizontalAlignment="Center" 
+                       Margin="20" 
+                       FontStyle="Italic" 
+                       Foreground="Gray"/>
+        </DockPanel>
+    </Grid>
+</Window>
