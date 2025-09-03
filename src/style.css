@@ -1,0 +1,237 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom component classes */
+@layer components {
+  /* Tab components */
+  .tab-button {
+    @apply px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent transition-colors duration-200 cursor-pointer;
+  }
+  
+  .tab-button.tab-active {
+    @apply text-primary-600 border-primary-600 font-semibold;
+  }
+
+  /* Traffic Light components */
+  .traffic-light-container {
+    @apply flex items-center justify-center;
+  }
+
+  .traffic-light {
+    @apply w-4 h-4 rounded-full border-2 border-gray-300 flex items-center justify-center transition-all duration-300 ease-in-out;
+  }
+
+  .traffic-light-dot {
+    @apply w-2 h-2 rounded-full transition-all duration-300 ease-in-out;
+  }
+
+  .traffic-light-red {
+    @apply border-red-400 bg-red-100;
+  }
+
+  .traffic-light-red .traffic-light-dot {
+    @apply bg-red-500;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+  }
+
+  .traffic-light-orange {
+    @apply border-orange-400 bg-orange-100;
+  }
+
+  .traffic-light-orange .traffic-light-dot {
+    @apply bg-orange-500;
+    box-shadow: 0 0 6px rgba(249, 115, 22, 0.6);
+    animation: pulse 2s infinite;
+  }
+
+  .traffic-light-green {
+    @apply border-green-400 bg-green-100;
+  }
+
+  .traffic-light-green .traffic-light-dot {
+    @apply bg-green-500;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  }
+  
+  .tab-panel {
+    @apply transition-opacity duration-300 ease-in-out;
+  }
+
+  /* Button components */
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-sm hover:shadow-md;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-sm hover:shadow-md;
+  }
+
+  /* Form components */
+  .model-selector {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white transition-colors duration-200;
+  }
+  
+  .form-input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200;
+  }
+
+  /* Card components */
+  .audio-control-panel {
+    @apply bg-white rounded-xl shadow-card p-6 border border-gray-200;
+  }
+  
+  .status-indicator {
+    @apply px-3 py-1 rounded-full text-sm font-medium flex items-center;
+  }
+
+  /* Audio visualizer */
+  .audio-visualizer {
+    @apply relative overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50;
+  }
+  
+  .audio-visualizer.active {
+    @apply border-primary-400 bg-primary-50;
+  }
+
+  /* Progress indicators */
+  .progress-bar {
+    @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden;
+  }
+  
+  .progress-fill {
+    @apply bg-primary-600 h-full transition-all duration-300 ease-out;
+  }
+
+  /* Memory usage indicators */
+  .memory-indicator {
+    @apply flex items-center justify-between p-3 bg-gray-50 rounded-lg;
+  }
+  
+  .memory-indicator.warning {
+    @apply bg-yellow-50 text-yellow-800;
+  }
+  
+  .memory-indicator.danger {
+    @apply bg-red-50 text-red-800;
+  }
+
+  /* Animation utilities */
+  .animate-pulse-slow {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-recording {
+    animation: recording 1.5s ease-in-out infinite;
+  }
+}
+
+/* Custom animations */
+@keyframes recording {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 768px) {
+  .tab-button {
+    @apply px-4 py-2 text-xs;
+  }
+  
+  .audio-control-panel {
+    @apply p-4;
+  }
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  /* Dark mode styles will be added in future iterations */
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Focus styles for accessibility */
+@layer base {
+  *:focus {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+  
+  button:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    @apply ring-2 ring-primary-500 ring-offset-2;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-primary {
+    @apply border-2 border-black;
+  }
+  
+  .btn-secondary {
+    @apply border-2 border-gray-600;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

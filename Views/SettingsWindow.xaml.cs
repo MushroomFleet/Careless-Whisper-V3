@@ -1,0 +1,991 @@
+using System.IO;
+using System.Net.Http;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using Microsoft.Extensions.Logging;
+using CarelessWhisperV2.Models;
+using CarelessWhisperV2.Services.Settings;
+using CarelessWhisperV2.Services.Audio;
+using CarelessWhisperV2.Services.Orchestration;
+using CarelessWhisperV2.Services.OpenRouter;
+using CarelessWhisperV2.Services.Environment;
+using CarelessWhisperV2.Services.AudioNotification;
+using CarelessWhisperV2.Services.Network;
+using SharpHook.Native;
+using Microsoft.Win32;
+
+namespace CarelessWhisperV2.Views;
+
+public partial class SettingsWindow : Window
+{
+    private readonly ISettingsService _settingsService;
+    private readonly IAudioService _audioService;
+    private readonly TranscriptionOrchestrator _orchestrator;
+    private readonly IOpenRouterService _openRouterService;
+    private readonly IEnvironmentService _environmentService;
+    private readonly IAudioNotificationService _audioNotificationService;
+    private readonly ILogger<SettingsWindow> _logger;
+    private ApplicationSettings _settings;
+    private string _capturedHotkey = "";
+    private string _capturedLlmHotkey = "";
+    private List<OpenRouterModel> _availableModels = new();
+
+    public SettingsWindow(
+        ISettingsService settingsService, 
+        IAudioService audioService,
+        TranscriptionOrchestrator orchestrator,
+        IOpenRouterService openRouterService,
+        IEnvironmentService environmentService,
+        IAudioNotificationService audioNotificationService,
+        ILogger<SettingsWindow> logger)
+    {
+        InitializeComponent();
+        _settingsService = settingsService;
+        _audioService = audioService;
+        _orchestrator = orchestrator;
+        _openRouterService = openRouterService;
+        _environmentService = environmentService;
+        _audioNotificationService = audioNotificationService;
+        _logger = logger;
+        _settings = new ApplicationSettings();
+
+        Loaded += SettingsWindow_Loaded;
+    }
+
+    private async void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await LoadCurrentSettings();
+            LoadAudioDevices();
+            UpdateModelInfo();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load settings window");
+            MessageBox.Show($"Failed to load settings: {ex.Message}", "Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task LoadCurrentSettings()
+    {
+        _settings = await _settingsService.LoadSettingsAsync<ApplicationSettings>();
+        
+        // General tab
+        AutoStartCheckBox.IsChecked = _settings.AutoStartWithWindows;
+        ThemeComboBox.SelectedItem = ThemeComboBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(item => item.Content.ToString() == _settings.Theme);
+        EnableLoggingCheckBox.IsChecked = _settings.Logging.EnableTranscriptionLogging;
+        SaveAudioFilesCheckBox.IsChecked = _settings.Logging.SaveAudioFiles;
+        RetentionDaysTextBox.Text = _settings.Logging.LogRetentionDays.ToString();
+        
+        // Hotkeys tab
+        HotkeyTextBox.Text = _settings.Hotkeys.PushToTalkKey;
+        LlmHotkeyTextBox.Text = _settings.Hotkeys.LlmPromptKey;
+        RequireModifiersCheckBox.IsChecked = _settings.Hotkeys.RequireModifiers;
+        
+        // Audio tab
+        SampleRateComboBox.SelectedItem = SampleRateComboBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(item => item.Content.ToString()?.StartsWith(_settings.Audio.SampleRate.ToString()) == true);
+        BufferSizeComboBox.SelectedItem = BufferSizeComboBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(item => item.Content.ToString() == _settings.Audio.BufferSize.ToString());
+        
+        // Whisper tab
+        ModelSizeComboBox.SelectedItem = ModelSizeComboBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag?.ToString() == _settings.Whisper.ModelSize);
+        LanguageComboBox.SelectedItem = LanguageComboBox.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag?.ToString() == _settings.Whisper.Language);
+        EnableGpuCheckBox.IsChecked = _settings.Whisper.EnableGpuAcceleration;
+        
+        // Load OpenRouter and Audio Notification settings
+        await LoadOpenRouterSettings();
+        LoadAudioNotificationSettings();
+    }
+
+    private async Task LoadOpenRouterSettings()
+    {
+        try
+        {
+            // Load API key from environment service
+            var apiKey = await _environmentService.GetApiKeyAsync();
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                ApiKeyPasswordBox.Password = apiKey;
+            }
+
+            // Load other OpenRouter settings
+            SystemPromptTextBox.Text = _settings.OpenRouter.SystemPrompt;
+            TemperatureSlider.Value = _settings.OpenRouter.Temperature;
+            MaxTokensTextBox.Text = _settings.OpenRouter.MaxTokens.ToString();
+            EnableStreamingCheckBox.IsChecked = _settings.OpenRouter.EnableStreaming;
+
+            // Load available models and set selected model
+            await LoadAvailableModels();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load OpenRouter settings");
+        }
+    }
+
+    private void LoadAudioNotificationSettings()
+    {
+        try
+        {
+            EnableNotificationsCheckBox.IsChecked = _settings.AudioNotification.EnableNotifications;
+            PlayOnSpeechToTextCheckBox.IsChecked = _settings.AudioNotification.PlayOnSpeechToText;
+            PlayOnLlmResponseCheckBox.IsChecked = _settings.AudioNotification.PlayOnLlmResponse;
+            AudioFilePathTextBox.Text = _settings.AudioNotification.AudioFilePath;
+            VolumeSlider.Value = _settings.AudioNotification.Volume;
+            
+            // Update volume display
+            VolumeValueTextBlock.Text = $"{_settings.AudioNotification.Volume * 100:F0}%";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load audio notification settings");
+        }
+    }
+
+    private async Task LoadAvailableModels()
+    {
+        try
+        {
+            ModelComboBox.Items.Clear();
+            ModelComboBox.Items.Add(new ComboBoxItem { Content = "Loading models...", IsEnabled = false });
+            ModelComboBox.SelectedIndex = 0;
+            
+            // Clear any previous error status
+            ApiKeyStatusTextBlock.Text = "";
+
+            var apiKey = ApiKeyPasswordBox.Password;
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                // Load fallback model if no API key is provided
+                _logger.LogInformation("No API key provided, loading fallback model");
+                LoadFallbackModel();
+                return;
+            }
+
+            // Validate API key format (OpenRouter keys start with "sk-or-")
+            if (!apiKey.StartsWith("sk-or-"))
+            {
+                ModelComboBox.Items.Clear();
+                ModelComboBox.Items.Add(new ComboBoxItem { Content = "Invalid API key format", IsEnabled = false });
+                ApiKeyStatusTextBlock.Text = "⚠ OpenRouter API keys should start with 'sk-or-'";
+                ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+                return;
+            }
+
+            // Store the current API key for the service to use, but don't disrupt the workflow
+            var originalApiKey = await _environmentService.GetApiKeyAsync();
+            var needToRestore = originalApiKey != apiKey;
+            
+            if (needToRestore)
+            {
+                await _environmentService.SaveApiKeyAsync(apiKey);
+                _logger.LogDebug("Temporarily set API key for model loading");
+            }
+
+            try 
+            {
+                _availableModels = await _openRouterService.GetAvailableModelsAsync();
+                
+                if (_availableModels == null || _availableModels.Count == 0)
+                {
+                    _logger.LogWarning("No models returned from OpenRouter API, loading fallback model");
+                    LoadFallbackModel();
+                    ApiKeyStatusTextBlock.Text = "⚠ Using fallback model - API returned no models";
+                    ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+                    return;
+                }
+                
+                // Check if we got the fallback model
+                var isFallback = _availableModels.Count == 1 && 
+                                _availableModels[0].Id == "anthropic/claude-sonnet-4" && 
+                                _availableModels[0].Name.Contains("Fallback");
+                
+                ModelComboBox.Items.Clear();
+                
+                foreach (var model in _availableModels)
+                {
+                    var item = new ComboBoxItem
+                    {
+                        Content = $"{model.Name} - ${model.PricePerMToken}/1M tokens",
+                        Tag = model.Id
+                    };
+                    ModelComboBox.Items.Add(item);
+                    
+                    if (model.Id == _settings.OpenRouter.SelectedModel)
+                    {
+                        ModelComboBox.SelectedItem = item;
+                    }
+                }
+
+                if (ModelComboBox.SelectedItem == null && ModelComboBox.Items.Count > 0)
+                {
+                    ModelComboBox.SelectedIndex = 0;
+                }
+                
+                if (isFallback)
+                {
+                    ApiKeyStatusTextBlock.Text = "⚠ Using fallback model - check logs for details";
+                    ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+                }
+                else
+                {
+                    ApiKeyStatusTextBlock.Text = $"✓ Loaded {_availableModels.Count} models successfully";
+                    ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+                }
+            }
+            finally
+            {
+                // Restore original API key if it was different
+                if (needToRestore && !string.IsNullOrEmpty(originalApiKey))
+                {
+                    await _environmentService.SaveApiKeyAsync(originalApiKey);
+                    _logger.LogDebug("Restored original API key");
+                }
+                else if (needToRestore)
+                {
+                    // If original was empty, we should keep the new one as it was entered by user
+                    _logger.LogDebug("Keeping new API key as original was empty");
+                }
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            _logger.LogError(httpEx, "HTTP error while loading models");
+            LoadFallbackModel();
+            ApiKeyStatusTextBlock.Text = "✗ Network error - using fallback model";
+            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _logger.LogError("Unauthorized access - invalid API key");
+            ModelComboBox.Items.Clear();
+            ModelComboBox.Items.Add(new ComboBoxItem { Content = "Invalid API key", IsEnabled = false });
+            ApiKeyStatusTextBlock.Text = "✗ Invalid API key - check your OpenRouter key";
+            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load available models");
+            LoadFallbackModel();
+            ApiKeyStatusTextBlock.Text = $"✗ Error occurred - using fallback model";
+            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+        }
+    }
+
+    private void LoadFallbackModel()
+    {
+        _logger.LogInformation("Loading fallback model in UI");
+        ModelComboBox.Items.Clear();
+        
+        var fallbackModel = new OpenRouterModel
+        {
+            Id = "anthropic/claude-sonnet-4",
+            Name = "Claude Sonnet 4 (Fallback)",
+            Description = "Fallback model when API models cannot be loaded",
+            PricePerMToken = 0.015m,
+            ContextLength = 200000,
+            SupportsStreaming = true
+        };
+        
+        _availableModels = new List<OpenRouterModel> { fallbackModel };
+        
+        var item = new ComboBoxItem
+        {
+            Content = $"{fallbackModel.Name} - ${fallbackModel.PricePerMToken}/1M tokens",
+            Tag = fallbackModel.Id
+        };
+        ModelComboBox.Items.Add(item);
+        ModelComboBox.SelectedItem = item;
+        
+        // Update model information display
+        ModelNameTextBlock.Text = fallbackModel.Name;
+        ModelDescriptionTextBlock.Text = fallbackModel.Description;
+        ModelPricingTextBlock.Text = $"${fallbackModel.PricePerMToken}/1M tokens";
+        ModelContextTextBlock.Text = $"Context: {fallbackModel.ContextLength:N0} tokens";
+    }
+
+    // OpenRouter Event Handlers
+    private async void TestApiKey_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var apiKey = ApiKeyPasswordBox.Password;
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                MessageBox.Show("Please enter an API key first.", "API Key Required", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            TestApiKeyButton.IsEnabled = false;
+            ApiKeyStatusTextBlock.Text = "Testing API key...";
+            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Blue;
+
+            // Test API key by fetching models
+            var isValid = await _openRouterService.ValidateApiKeyAsync(apiKey);
+            
+            if (isValid)
+            {
+                ApiKeyStatusTextBlock.Text = "✓ API key is valid";
+                ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+                
+                // Save API key to environment
+                await _environmentService.SaveApiKeyAsync(apiKey);
+                
+                // Refresh models
+                await LoadAvailableModels();
+            }
+            else
+            {
+                ApiKeyStatusTextBlock.Text = "✗ Invalid API key";
+                ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "API key test failed");
+            ApiKeyStatusTextBlock.Text = $"✗ Test failed: {ex.Message}";
+            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+        }
+        finally
+        {
+            TestApiKeyButton.IsEnabled = true;
+        }
+    }
+
+    private async void RefreshModels_Click(object sender, RoutedEventArgs e)
+    {
+        await LoadAvailableModels();
+    }
+
+    private async void DiagnoseConnection_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            DiagnoseConnectionButton.IsEnabled = false;
+            ApiKeyStatusTextBlock.Text = "Running network diagnostics...";
+            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Blue;
+
+            // Create and run network diagnostics
+            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddConsole());
+            var diagnosticsLogger = loggerFactory.CreateLogger<NetworkDiagnosticsService>();
+            var diagnosticsService = new NetworkDiagnosticsService(diagnosticsLogger);
+            var result = await diagnosticsService.RunDiagnosticsAsync();
+
+            // Display results
+            var message = $"Network Diagnostics Results:\n\n{result.Summary}\n\n";
+            
+            if (result.Issues.Count > 0)
+            {
+                message += "Issues Found:\n";
+                foreach (var issue in result.Issues)
+                {
+                    message += $"• {issue}\n";
+                }
+                message += "\n";
+            }
+            
+            if (result.Suggestions.Count > 0)
+            {
+                message += "Suggestions:\n";
+                foreach (var suggestion in result.Suggestions)
+                {
+                    message += $"• {suggestion}\n";
+                }
+                message += "\n";
+            }
+            
+            if (result.ProxyInfo.ProxyDetected)
+            {
+                message += $"Proxy Information:\n";
+                message += $"• Type: {result.ProxyInfo.ProxyType}\n";
+                message += $"• Address: {result.ProxyInfo.ProxyAddress}\n";
+                message += $"• Authentication Required: {result.ProxyInfo.AuthenticationRequired}\n";
+            }
+
+            MessageBox.Show(message, "Network Diagnostics Results", 
+                MessageBoxButton.OK, 
+                result.OpenRouterApiAccessible ? MessageBoxImage.Information : MessageBoxImage.Warning);
+
+            // Update status text based on results
+            ApiKeyStatusTextBlock.Text = result.Summary;
+            ApiKeyStatusTextBlock.Foreground = result.OpenRouterApiAccessible 
+                ? System.Windows.Media.Brushes.Green 
+                : System.Windows.Media.Brushes.Red;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Network diagnostics failed");
+            ApiKeyStatusTextBlock.Text = $"✗ Diagnostics failed: {ex.Message}";
+            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            
+            MessageBox.Show($"Network diagnostics failed: {ex.Message}", "Diagnostics Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            DiagnoseConnectionButton.IsEnabled = true;
+        }
+    }
+
+    private void ModelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ModelComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag != null)
+        {
+            var selectedModelId = selectedItem.Tag.ToString();
+            var selectedModel = _availableModels.FirstOrDefault(m => m.Id == selectedModelId);
+            
+            if (selectedModel != null)
+            {
+                ModelNameTextBlock.Text = selectedModel.Name;
+                ModelDescriptionTextBlock.Text = selectedModel.Description;
+                ModelPricingTextBlock.Text = $"${selectedModel.PricePerMToken}/1M tokens";
+                ModelContextTextBlock.Text = $"Context: {selectedModel.ContextLength:N0} tokens";
+            }
+        }
+    }
+
+    // Audio Notification Event Handlers
+    private void BrowseAudioFile_Click(object sender, RoutedEventArgs e)
+    {
+        var openFileDialog = new OpenFileDialog
+        {
+            Title = "Select Audio Notification File",
+            Filter = "Audio Files (*.wav;*.mp3)|*.wav;*.mp3|WAV Files (*.wav)|*.wav|MP3 Files (*.mp3)|*.mp3|All Files (*.*)|*.*",
+            CheckFileExists = true
+        };
+
+        if (openFileDialog.ShowDialog() == true)
+        {
+            AudioFilePathTextBox.Text = openFileDialog.FileName;
+        }
+    }
+
+    private async void TestAudio_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var audioFilePath = AudioFilePathTextBox.Text;
+            if (string.IsNullOrEmpty(audioFilePath) || !File.Exists(audioFilePath))
+            {
+                MessageBox.Show("Please select a valid audio file first.", "Audio File Required", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            TestAudioButton.IsEnabled = false;
+
+            // Set volume and test the audio file
+            _audioNotificationService.SetVolume(VolumeSlider.Value);
+            var success = await _audioNotificationService.TestAudioFileAsync(audioFilePath);
+
+            if (success)
+            {
+                MessageBox.Show("✓ Audio played successfully!", "Audio Test", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show("✗ Audio test failed. Please check the file format and try again.", "Audio Test Failed", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Audio test failed");
+            MessageBox.Show($"✗ Audio test failed: {ex.Message}", "Audio Test Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            TestAudioButton.IsEnabled = true;
+        }
+    }
+
+    private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (VolumeValueTextBlock != null)
+        {
+            VolumeValueTextBlock.Text = $"{e.NewValue * 100:F0}%";
+        }
+        
+        // Update settings object immediately so changes are captured when saving
+        if (_settings?.AudioNotification != null)
+        {
+            _settings.AudioNotification.Volume = e.NewValue;
+            
+            // Update the audio notification service with the new volume in real-time
+            try
+            {
+                _audioNotificationService?.SetVolume(e.NewValue);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update audio notification volume in real-time");
+            }
+        }
+    }
+
+    private void LoadAudioDevices()
+    {
+        try
+        {
+            var devices = _audioService.GetAvailableMicrophones();
+            MicrophoneComboBox.Items.Clear();
+            
+            foreach (var device in devices)
+            {
+                var item = new ComboBoxItem
+                {
+                    Content = device.IsDefault ? $"{device.Name} (Default)" : device.Name,
+                    Tag = device.Id
+                };
+                
+                MicrophoneComboBox.Items.Add(item);
+                
+                if (device.Id == _settings.Audio.PreferredDeviceId || 
+                    (string.IsNullOrEmpty(_settings.Audio.PreferredDeviceId) && device.IsDefault))
+                {
+                    MicrophoneComboBox.SelectedItem = item;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load audio devices");
+            MessageBox.Show("Failed to load audio devices. Please try refreshing.", "Audio Error", 
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void HotkeyTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        e.Handled = true;
+        
+        var modifiers = new List<string>();
+        var key = "";
+        
+        // Capture modifier keys
+        if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
+            modifiers.Add("Ctrl");
+        if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt))
+            modifiers.Add("Alt");
+        if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+            modifiers.Add("Shift");
+        if (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin))
+            modifiers.Add("Win");
+            
+        // Capture main key (ignore modifier keys themselves)
+        if (e.Key != Key.LeftCtrl && e.Key != Key.RightCtrl &&
+            e.Key != Key.LeftAlt && e.Key != Key.RightAlt &&
+            e.Key != Key.LeftShift && e.Key != Key.RightShift &&
+            e.Key != Key.LWin && e.Key != Key.RWin)
+        {
+            key = e.Key.ToString();
+        }
+        
+        if (!string.IsNullOrEmpty(key))
+        {
+            if (modifiers.Count > 0)
+            {
+                _capturedHotkey = string.Join("+", modifiers) + "+" + key;
+            }
+            else
+            {
+                _capturedHotkey = key;
+            }
+            
+            HotkeyTextBox.Text = _capturedHotkey;
+        }
+    }
+
+    private void LlmHotkeyTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        e.Handled = true;
+        
+        var modifiers = new List<string>();
+        var key = "";
+        
+        // Capture modifier keys
+        if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
+            modifiers.Add("Ctrl");
+        if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt))
+            modifiers.Add("Alt");
+        if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+            modifiers.Add("Shift");
+        if (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin))
+            modifiers.Add("Win");
+            
+        // Capture main key (ignore modifier keys themselves)
+        if (e.Key != Key.LeftCtrl && e.Key != Key.RightCtrl &&
+            e.Key != Key.LeftAlt && e.Key != Key.RightAlt &&
+            e.Key != Key.LeftShift && e.Key != Key.RightShift &&
+            e.Key != Key.LWin && e.Key != Key.RWin)
+        {
+            key = e.Key.ToString();
+        }
+        
+        if (!string.IsNullOrEmpty(key))
+        {
+            if (modifiers.Count > 0)
+            {
+                _capturedLlmHotkey = string.Join("+", modifiers) + "+" + key;
+            }
+            else
+            {
+                _capturedLlmHotkey = key;
+            }
+            
+            LlmHotkeyTextBox.Text = _capturedLlmHotkey;
+        }
+    }
+
+    private void ClearHotkey_Click(object sender, RoutedEventArgs e)
+    {
+        HotkeyTextBox.Text = "";
+        _capturedHotkey = "";
+    }
+
+    private void ClearLlmHotkey_Click(object sender, RoutedEventArgs e)
+    {
+        LlmHotkeyTextBox.Text = "";
+        _capturedLlmHotkey = "";
+    }
+
+    private void MicrophoneComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        TestResultTextBlock.Text = "";
+    }
+
+    private void RefreshDevices_Click(object sender, RoutedEventArgs e)
+    {
+        LoadAudioDevices();
+        TestResultTextBlock.Text = "Devices refreshed";
+        TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+    }
+
+    private async void TestMicrophone_Click(object sender, RoutedEventArgs e)
+    {
+        if (MicrophoneComboBox.SelectedItem is not ComboBoxItem selectedItem)
+        {
+            TestResultTextBlock.Text = "Please select a microphone first";
+            TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            return;
+        }
+
+        try
+        {
+            TestResultTextBlock.Text = "Testing microphone and transcription... Speak now!";
+            TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Blue;
+            
+            TestMicrophoneButton.IsEnabled = false;
+            
+            // Enhanced test - record for 5 seconds and test transcription
+            var tempFile = Path.Combine(Path.GetTempPath(), $"mic_test_{DateTime.Now:yyyyMMdd_HHmmss_fff}.wav");
+            
+            // Step 1: Test audio recording
+            TestResultTextBlock.Text = "Step 1: Testing audio recording...";
+            await Task.Run(async () =>
+            {
+                await _audioService.StartRecordingAsync(tempFile);
+                await Task.Delay(5000); // Record for 5 seconds
+                await _audioService.StopRecordingAsync();
+            });
+            
+            // Wait for file to be fully released
+            TestResultTextBlock.Text = "Waiting for recording to finalize...";
+            await Task.Delay(1000);
+            
+            if (!File.Exists(tempFile))
+            {
+                TestResultTextBlock.Text = "✗ Audio recording failed - no file created";
+                TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+                return;
+            }
+            
+            var fileInfo = new FileInfo(tempFile);
+            if (fileInfo.Length < 1000)
+            {
+                TestResultTextBlock.Text = "⚠ No audio detected. Check microphone connection.";
+                TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+                File.Delete(tempFile);
+                return;
+            }
+            
+            // Step 2: Test transcription
+            TestResultTextBlock.Text = $"Step 2: Testing transcription... (Audio: {fileInfo.Length / 1024}KB)";
+            
+            try
+            {
+                var transcriptionService = (CarelessWhisperV2.Services.Transcription.WhisperTranscriptionService)_orchestrator.GetType()
+                    .GetField("_transcriptionService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.GetValue(_orchestrator);
+                
+                if (transcriptionService == null)
+                {
+                    TestResultTextBlock.Text = "✗ Transcription service not found";
+                    TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+                    return;
+                }
+                
+                // Check if transcription service is initialized
+                var isInitialized = transcriptionService.IsInitialized;
+                if (!isInitialized)
+                {
+                    TestResultTextBlock.Text = "⚠ Initializing transcription service...";
+                    await transcriptionService.InitializeAsync("Base");
+                }
+                
+                // Attempt transcription
+                var result = await transcriptionService.TranscribeAsync(tempFile);
+                
+                if (!string.IsNullOrWhiteSpace(result.FullText))
+                {
+                    TestResultTextBlock.Text = $"✓ Test successful! Transcribed: \"{result.FullText.Substring(0, Math.Min(100, result.FullText.Length))}...\"";
+                    TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+                }
+                else
+                {
+                    TestResultTextBlock.Text = "⚠ Audio recorded but no speech detected. Try speaking louder or closer to microphone.";
+                    TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+                }
+            }
+            catch (Exception transcriptionEx)
+            {
+                _logger.LogError(transcriptionEx, "Transcription test failed");
+                TestResultTextBlock.Text = $"✗ Transcription failed: {transcriptionEx.Message}";
+                TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            }
+            
+            // Cleanup
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Microphone test failed");
+            TestResultTextBlock.Text = $"✗ Test failed: {ex.Message}";
+            TestResultTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+        }
+        finally
+        {
+            TestMicrophoneButton.IsEnabled = true;
+        }
+    }
+
+    private void ModelSizeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateModelInfo();
+    }
+
+    private void UpdateModelInfo()
+    {
+        if (ModelSizeComboBox.SelectedItem is not ComboBoxItem selectedItem)
+            return;
+            
+        var modelSize = selectedItem.Tag?.ToString() ?? "Base";
+        
+        switch (modelSize.ToLower())
+        {
+            case "tiny":
+                ModelInfoTextBlock.Text = "Tiny Model - Fast processing, basic accuracy";
+                ModelSizeTextBlock.Text = "Size: ~39M parameters, ~1GB RAM";
+                ModelPerformanceTextBlock.Text = "Performance: Very fast, suitable for testing";
+                break;
+            case "base":
+                ModelInfoTextBlock.Text = "Base Model - Balanced performance and accuracy";
+                ModelSizeTextBlock.Text = "Size: ~74M parameters, ~1GB RAM";
+                ModelPerformanceTextBlock.Text = "Performance: Good accuracy with reasonable speed";
+                break;
+            case "small":
+                ModelInfoTextBlock.Text = "Small Model - Good accuracy";
+                ModelSizeTextBlock.Text = "Size: ~244M parameters, ~2GB RAM";
+                ModelPerformanceTextBlock.Text = "Performance: Better accuracy, slower processing";
+                break;
+            case "medium":
+                ModelInfoTextBlock.Text = "Medium Model - High accuracy";
+                ModelSizeTextBlock.Text = "Size: ~769M parameters, ~5GB RAM";
+                ModelPerformanceTextBlock.Text = "Performance: High accuracy, requires more resources";
+                break;
+        }
+    }
+
+    private async void Save_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Validate inputs
+            if (!ValidateInputs())
+                return;
+                
+            // Update settings object
+            UpdateSettingsFromUI();
+            
+            // Save settings
+            await _orchestrator.UpdateSettingsAsync(_settings);
+            
+            DialogResult = true;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save settings");
+            MessageBox.Show($"Failed to save settings: {ex.Message}", "Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private bool ValidateInputs()
+    {
+        // Validate retention days
+        if (!int.TryParse(RetentionDaysTextBox.Text, out var retentionDays) || retentionDays < 1)
+        {
+            MessageBox.Show("Retention period must be a positive number.", "Validation Error", 
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        
+        // Validate hotkey
+        if (string.IsNullOrWhiteSpace(HotkeyTextBox.Text))
+        {
+            MessageBox.Show("Please set a hotkey for push-to-talk.", "Validation Error", 
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        
+        // Validate OpenRouter settings
+        if (!int.TryParse(MaxTokensTextBox.Text, out var maxTokens) || maxTokens < 1 || maxTokens > 4000)
+        {
+            MessageBox.Show("Max tokens must be between 1 and 4000.", "Validation Error", 
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        // Validate audio notification settings
+        if (EnableNotificationsCheckBox.IsChecked == true)
+        {
+            var audioPath = AudioFilePathTextBox.Text;
+            
+            // Check if audio file path is provided when notifications are enabled
+            if (string.IsNullOrWhiteSpace(audioPath))
+            {
+                MessageBox.Show("Please select an audio file when notifications are enabled.", "Validation Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+            
+            // Check if file exists
+            if (!File.Exists(audioPath))
+            {
+                MessageBox.Show("Selected audio file does not exist. Please choose a valid audio file.", "Validation Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+            
+            // Validate file format
+            var extension = Path.GetExtension(audioPath)?.ToLowerInvariant();
+            if (extension != ".wav" && extension != ".mp3")
+            {
+                MessageBox.Show("Audio file must be in .wav or .mp3 format.", "Validation Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+            
+            // Validate that at least one notification type is enabled
+            if (!(PlayOnSpeechToTextCheckBox.IsChecked == true || PlayOnLlmResponseCheckBox.IsChecked == true))
+            {
+                MessageBox.Show("Please enable at least one notification type (Speech-to-Text or LLM Response) when notifications are enabled.", "Validation Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+        }
+        
+        // Validate volume range
+        if (VolumeSlider.Value < 0.0 || VolumeSlider.Value > 1.0)
+        {
+            MessageBox.Show("Volume must be between 0% and 100%.", "Validation Error", 
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        
+        return true;
+    }
+
+    private async void UpdateSettingsFromUI()
+    {
+        // General
+        _settings.AutoStartWithWindows = AutoStartCheckBox.IsChecked ?? false;
+        _settings.Theme = ((ComboBoxItem)ThemeComboBox.SelectedItem)?.Content?.ToString() ?? "Dark";
+        _settings.Logging.EnableTranscriptionLogging = EnableLoggingCheckBox.IsChecked ?? true;
+        _settings.Logging.SaveAudioFiles = SaveAudioFilesCheckBox.IsChecked ?? false;
+        _settings.Logging.LogRetentionDays = int.Parse(RetentionDaysTextBox.Text);
+        
+        // Hotkeys
+        _settings.Hotkeys.PushToTalkKey = HotkeyTextBox.Text;
+        _settings.Hotkeys.LlmPromptKey = LlmHotkeyTextBox.Text;
+        _settings.Hotkeys.RequireModifiers = RequireModifiersCheckBox.IsChecked ?? false;
+        
+        // Audio
+        _settings.Audio.PreferredDeviceId = ((ComboBoxItem)MicrophoneComboBox.SelectedItem)?.Tag?.ToString() ?? "";
+        
+        var sampleRateText = ((ComboBoxItem)SampleRateComboBox.SelectedItem)?.Content?.ToString() ?? "16000 Hz";
+        _settings.Audio.SampleRate = int.Parse(sampleRateText.Split(' ')[0]);
+        
+        var bufferSizeText = ((ComboBoxItem)BufferSizeComboBox.SelectedItem)?.Content?.ToString() ?? "1024";
+        _settings.Audio.BufferSize = int.Parse(bufferSizeText);
+        
+        // Whisper
+        _settings.Whisper.ModelSize = ((ComboBoxItem)ModelSizeComboBox.SelectedItem)?.Tag?.ToString() ?? "Base";
+        _settings.Whisper.Language = ((ComboBoxItem)LanguageComboBox.SelectedItem)?.Tag?.ToString() ?? "auto";
+        _settings.Whisper.EnableGpuAcceleration = EnableGpuCheckBox.IsChecked ?? true;
+        
+        // OpenRouter V3.0 Settings
+        _settings.OpenRouter.SystemPrompt = SystemPromptTextBox.Text;
+        _settings.OpenRouter.Temperature = TemperatureSlider.Value;
+        _settings.OpenRouter.MaxTokens = int.Parse(MaxTokensTextBox.Text);
+        _settings.OpenRouter.EnableStreaming = EnableStreamingCheckBox.IsChecked ?? true;
+        
+        // Save selected model
+        if (ModelComboBox.SelectedItem is ComboBoxItem selectedModelItem && selectedModelItem.Tag != null)
+        {
+            _settings.OpenRouter.SelectedModel = selectedModelItem.Tag.ToString();
+        }
+        
+        // Save API key to environment service
+        var apiKey = ApiKeyPasswordBox.Password;
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            try
+            {
+                await _environmentService.SaveApiKeyAsync(apiKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save API key");
+                // Note: Don't throw here as we want to continue saving other settings
+            }
+        }
+        
+        // Audio Notification V3.0 Settings
+        _settings.AudioNotification.EnableNotifications = EnableNotificationsCheckBox.IsChecked ?? false;
+        _settings.AudioNotification.PlayOnSpeechToText = PlayOnSpeechToTextCheckBox.IsChecked ?? false;
+        _settings.AudioNotification.PlayOnLlmResponse = PlayOnLlmResponseCheckBox.IsChecked ?? false;
+        _settings.AudioNotification.AudioFilePath = AudioFilePathTextBox.Text;
+        _settings.AudioNotification.Volume = VolumeSlider.Value;
+    }
+
+    private void Cancel_Click(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
+        Close();
+    }
+}
