@@ -6,9 +6,9 @@
 
 Transform your voice into text instantly OR get AI-powered responses with simple hotkeys. No windows, no interruptions—just speak and get results anywhere.
 
-**4/9/25:** https://github.com/MushroomFleet/Careless-Canvas-NML
-## Specially designed infinite canvas for your pastes 
-takes advantage of NML (nested markup language) to save your work.
+**4/9/25:** [Careless-Canvas-NML](https://github.com/MushroomFleet/Careless-Canvas-NML)
+- Specially designed infinite canvas for your pastes 
+- takes advantage of NML (nested markup language) to save your work.
 
 ## 🚀 Get Started Now - Download V3.0.1
 
@@ -231,4 +231,5 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 **Made for developers, writers, and anyone who wants both instant transcription AND AI assistance at their fingertips.**
 
 *V3.0.1: Where voice meets intelligence - Care Less, Achieve More.*
+
 
