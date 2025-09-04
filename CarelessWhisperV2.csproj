@@ -10,18 +10,20 @@
     
     <!-- Distribution Configuration -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>false</SelfContained>
+    <SelfContained>true</SelfContained>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     
     <!-- Application Metadata -->
-    <AssemblyTitle>Careless Whisper V3</AssemblyTitle>
+    <AssemblyTitle>Careless Whisper V3.1</AssemblyTitle>
     <AssemblyDescription>Dual-Mode Voice-to-Text &amp; AI Assistant for Windows</AssemblyDescription>
     <AssemblyCompany>MushroomFleet</AssemblyCompany>
-    <AssemblyProduct>Careless Whisper V3</AssemblyProduct>
+    <AssemblyProduct>Careless Whisper V3.1</AssemblyProduct>
     <AssemblyCopyright>Copyright © 2025 MushroomFleet</AssemblyCopyright>
-    <AssemblyVersion>3.0.0.0</AssemblyVersion>
-    <FileVersion>3.0.0.0</FileVersion>
-    <Version>3.0.0</Version>
+    <AssemblyVersion>3.1.0.0</AssemblyVersion>
+    <FileVersion>3.1.0.0</FileVersion>
+    <Version>3.1.0</Version>
     
     <!-- Application Icon -->
     <!-- <ApplicationIcon>Resources\app-icon.ico</ApplicationIcon> -->
@@ -54,6 +56,24 @@
     <!-- JSON Serialization for OpenRouter API -->
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
   </ItemGroup>
+
+  <!-- Ensure native libraries are properly included in single-file deployments -->
+  <PropertyGroup>
+    <!-- Additional settings for native library extraction -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+  </PropertyGroup>
+
+  <!-- MSBuild Target to ensure Whisper natives are included -->
+  <Target Name="IncludeWhisperNatives" BeforeTargets="GenerateSingleFileBundle">
+    <ItemGroup>
+      <_WhisperNatives Include="$(OutputPath)runtimes\$(RuntimeIdentifier)\*.dll" />
+      <_WhisperNatives Include="$(OutputPath)runtimes\win-x64\*.dll" Condition="'$(RuntimeIdentifier)' == 'win-x64' or '$(RuntimeIdentifier)' == ''" />
+      <FilesToIncludeForPublish Include="@(_WhisperNatives)">
+        <RelativePath>%(Filename)%(Extension)</RelativePath>
+      </FilesToIncludeForPublish>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <None Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />

@@ -347,7 +347,7 @@ public class TranscriptionOrchestrator : IDisposable
                 transcriptionResult.FullText.Substring(0, Math.Min(50, transcriptionResult.FullText.Length)));
 
             // Process with OpenRouter LLM
-            if (_openRouterService.IsConfigured)
+            if (await _openRouterService.IsConfiguredAsync())
             {
                 var llmResponse = await _openRouterService.ProcessPromptAsync(
                     transcriptionResult.FullText,

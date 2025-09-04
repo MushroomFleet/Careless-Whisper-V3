@@ -13,6 +13,7 @@ using CarelessWhisperV2.Services.Orchestration;
 using CarelessWhisperV2.Services.Environment;
 using CarelessWhisperV2.Services.OpenRouter;
 using CarelessWhisperV2.Services.AudioNotification;
+using CarelessWhisperV2.Services.Cache;
 
 namespace CarelessWhisperV2;
 
@@ -36,6 +37,7 @@ public class Program
         
         // NEW V3.0 services
         builder.Services.AddSingleton<IEnvironmentService, EnvironmentService>();
+        builder.Services.AddSingleton<IModelsCacheService, ModelsCacheService>();
         builder.Services.AddSingleton<IOpenRouterService, OpenRouterService>();
         builder.Services.AddSingleton<IAudioNotificationService, AudioNotificationService>();
         

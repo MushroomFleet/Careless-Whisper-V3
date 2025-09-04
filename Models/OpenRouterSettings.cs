@@ -5,7 +5,7 @@ namespace CarelessWhisperV2.Models;
 public class OpenRouterSettings : IValidatableObject
 {
     public string ApiKey { get; set; } = "";
-    public string SelectedModel { get; set; } = "openai/gpt-4o-mini";
+    public string SelectedModel { get; set; } = "anthropic/claude-sonnet-4";
     public string SystemPrompt { get; set; } = "You are a helpful assistant. Please provide a clear, concise response to the user's voice input.";
     public bool EnableStreaming { get; set; } = true;
     public double Temperature { get; set; } = 0.7;

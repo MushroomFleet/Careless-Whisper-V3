@@ -149,133 +149,88 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private async Task LoadAvailableModels()
+    private async Task LoadAvailableModels(bool forceRefresh = false)
     {
+        ApiKeyStatusTextBlock.Text = "Loading models...";
+        ModelComboBox.Items.Clear();
+        
+        var apiKey = ApiKeyPasswordBox.Password;
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            LoadFallbackModel();
+            SelectStoredModel();
+            return;
+        }
+
         try
         {
-            ModelComboBox.Items.Clear();
-            ModelComboBox.Items.Add(new ComboBoxItem { Content = "Loading models...", IsEnabled = false });
-            ModelComboBox.SelectedIndex = 0;
+            // Direct HTTP call to OpenRouter
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
             
-            // Clear any previous error status
-            ApiKeyStatusTextBlock.Text = "";
-
-            var apiKey = ApiKeyPasswordBox.Password;
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                // Load fallback model if no API key is provided
-                _logger.LogInformation("No API key provided, loading fallback model");
-                LoadFallbackModel();
-                return;
-            }
-
-            // Validate API key format (OpenRouter keys start with "sk-or-")
-            if (!apiKey.StartsWith("sk-or-"))
-            {
-                ModelComboBox.Items.Clear();
-                ModelComboBox.Items.Add(new ComboBoxItem { Content = "Invalid API key format", IsEnabled = false });
-                ApiKeyStatusTextBlock.Text = "⚠ OpenRouter API keys should start with 'sk-or-'";
-                ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
-                return;
-            }
-
-            // Store the current API key for the service to use, but don't disrupt the workflow
-            var originalApiKey = await _environmentService.GetApiKeyAsync();
-            var needToRestore = originalApiKey != apiKey;
+            var response = await client.GetAsync("https://openrouter.ai/api/v1/models");
+            var jsonString = await response.Content.ReadAsStringAsync();
             
-            if (needToRestore)
+            ApiKeyStatusTextBlock.Text = $"Got {jsonString.Length} chars from API";
+            
+            // Simple JSON parsing
+            var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonString);
+            var data = jsonDoc.RootElement.GetProperty("data");
+            
+            _availableModels = new List<OpenRouterModel>();
+            
+            foreach (var modelElement in data.EnumerateArray())
             {
-                await _environmentService.SaveApiKeyAsync(apiKey);
-                _logger.LogDebug("Temporarily set API key for model loading");
-            }
-
-            try 
-            {
-                _availableModels = await _openRouterService.GetAvailableModelsAsync();
-                
-                if (_availableModels == null || _availableModels.Count == 0)
+                var model = new OpenRouterModel
                 {
-                    _logger.LogWarning("No models returned from OpenRouter API, loading fallback model");
-                    LoadFallbackModel();
-                    ApiKeyStatusTextBlock.Text = "⚠ Using fallback model - API returned no models";
-                    ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
-                    return;
-                }
+                    Id = modelElement.GetProperty("id").GetString() ?? "",
+                    Name = modelElement.TryGetProperty("name", out var nameProperty) ? 
+                           nameProperty.GetString() ?? modelElement.GetProperty("id").GetString() ?? "" : 
+                           modelElement.GetProperty("id").GetString() ?? "",
+                    Description = modelElement.TryGetProperty("description", out var descProperty) ? 
+                                 descProperty.GetString() ?? "" : "",
+                    PricePerMToken = 0.001m, // Default price
+                    ContextLength = 4096,
+                    SupportsStreaming = true
+                };
                 
-                // Check if we got the fallback model
-                var isFallback = _availableModels.Count == 1 && 
-                                _availableModels[0].Id == "anthropic/claude-sonnet-4" && 
-                                _availableModels[0].Name.Contains("Fallback");
-                
-                ModelComboBox.Items.Clear();
-                
-                foreach (var model in _availableModels)
+                if (!string.IsNullOrEmpty(model.Id))
                 {
-                    var item = new ComboBoxItem
-                    {
-                        Content = $"{model.Name} - ${model.PricePerMToken}/1M tokens",
-                        Tag = model.Id
-                    };
-                    ModelComboBox.Items.Add(item);
-                    
-                    if (model.Id == _settings.OpenRouter.SelectedModel)
-                    {
-                        ModelComboBox.SelectedItem = item;
-                    }
-                }
-
-                if (ModelComboBox.SelectedItem == null && ModelComboBox.Items.Count > 0)
-                {
-                    ModelComboBox.SelectedIndex = 0;
-                }
-                
-                if (isFallback)
-                {
-                    ApiKeyStatusTextBlock.Text = "⚠ Using fallback model - check logs for details";
-                    ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
-                }
-                else
-                {
-                    ApiKeyStatusTextBlock.Text = $"✓ Loaded {_availableModels.Count} models successfully";
-                    ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+                    _availableModels.Add(model);
                 }
             }
-            finally
+            
+            // Populate dropdown
+            foreach (var model in _availableModels)
             {
-                // Restore original API key if it was different
-                if (needToRestore && !string.IsNullOrEmpty(originalApiKey))
+                var item = new ComboBoxItem
                 {
-                    await _environmentService.SaveApiKeyAsync(originalApiKey);
-                    _logger.LogDebug("Restored original API key");
-                }
-                else if (needToRestore)
+                    Content = $"{model.Name}",
+                    Tag = model.Id
+                };
+                ModelComboBox.Items.Add(item);
+            }
+            
+            // Select the stored model or default to first available
+            if (!SelectStoredModel() && ModelComboBox.Items.Count > 0)
+            {
+                ModelComboBox.SelectedIndex = 0;
+                // Update settings with the newly selected model
+                if (ModelComboBox.SelectedItem is ComboBoxItem firstItem && firstItem.Tag != null)
                 {
-                    // If original was empty, we should keep the new one as it was entered by user
-                    _logger.LogDebug("Keeping new API key as original was empty");
+                    _settings.OpenRouter.SelectedModel = firstItem.Tag.ToString() ?? "";
                 }
             }
-        }
-        catch (HttpRequestException httpEx)
-        {
-            _logger.LogError(httpEx, "HTTP error while loading models");
-            LoadFallbackModel();
-            ApiKeyStatusTextBlock.Text = "✗ Network error - using fallback model";
-            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            _logger.LogError("Unauthorized access - invalid API key");
-            ModelComboBox.Items.Clear();
-            ModelComboBox.Items.Add(new ComboBoxItem { Content = "Invalid API key", IsEnabled = false });
-            ApiKeyStatusTextBlock.Text = "✗ Invalid API key - check your OpenRouter key";
-            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            
+            ApiKeyStatusTextBlock.Text = $"✓ Loaded {_availableModels.Count} models";
+            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load available models");
+            _logger.LogError(ex, "Failed to load models from OpenRouter API");
+            ApiKeyStatusTextBlock.Text = $"Error: {ex.Message}";
             LoadFallbackModel();
-            ApiKeyStatusTextBlock.Text = $"✗ Error occurred - using fallback model";
-            ApiKeyStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+            SelectStoredModel();
         }
     }
 
@@ -309,6 +264,58 @@ public partial class SettingsWindow : Window
         ModelDescriptionTextBlock.Text = fallbackModel.Description;
         ModelPricingTextBlock.Text = $"${fallbackModel.PricePerMToken}/1M tokens";
         ModelContextTextBlock.Text = $"Context: {fallbackModel.ContextLength:N0} tokens";
+    }
+
+    private bool SelectStoredModel()
+    {
+        try
+        {
+            var storedModelId = _settings.OpenRouter.SelectedModel;
+            if (string.IsNullOrEmpty(storedModelId))
+            {
+                _logger.LogDebug("No stored model ID found");
+                return false;
+            }
+
+            // Find the stored model in the dropdown
+            foreach (ComboBoxItem item in ModelComboBox.Items)
+            {
+                if (item.Tag?.ToString() == storedModelId)
+                {
+                    ModelComboBox.SelectedItem = item;
+                    _logger.LogInformation("Successfully selected stored model: {ModelId}", storedModelId);
+                    return true;
+                }
+            }
+
+            // If stored model not found in available models, validate if it exists in our available models list
+            var storedModel = _availableModels.FirstOrDefault(m => m.Id == storedModelId);
+            if (storedModel != null)
+            {
+                // Add the model to dropdown if it exists but wasn't loaded
+                var item = new ComboBoxItem
+                {
+                    Content = $"{storedModel.Name}",
+                    Tag = storedModel.Id
+                };
+                ModelComboBox.Items.Add(item);
+                ModelComboBox.SelectedItem = item;
+                _logger.LogInformation("Added and selected stored model that was missing from dropdown: {ModelId}", storedModelId);
+                return true;
+            }
+
+            _logger.LogWarning("Stored model not found in available models: {ModelId}. Will use fallback.", storedModelId);
+            
+            // Reset to fallback model in settings since the stored one is invalid
+            _settings.OpenRouter.SelectedModel = "anthropic/claude-sonnet-4";
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error selecting stored model");
+            return false;
+        }
     }
 
     // OpenRouter Event Handlers
@@ -362,7 +369,7 @@ public partial class SettingsWindow : Window
 
     private async void RefreshModels_Click(object sender, RoutedEventArgs e)
     {
-        await LoadAvailableModels();
+        await LoadAvailableModels(forceRefresh: true);
     }
 
     private async void DiagnoseConnection_Click(object sender, RoutedEventArgs e)

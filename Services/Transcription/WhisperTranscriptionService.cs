@@ -3,6 +3,8 @@ using Whisper.net.Ggml;
 using Microsoft.Extensions.Logging;
 using CarelessWhisperV2.Models;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Reflection;
 
 namespace CarelessWhisperV2.Services.Transcription;
 
@@ -30,6 +32,9 @@ public class WhisperTranscriptionService : ITranscriptionService
                 ProgressPercentage = 0, 
                 Status = "Initializing Whisper model..." 
             });
+
+            // Diagnostic: Check for native libraries
+            CheckNativeLibraries();
 
             var modelType = ParseModelSize(modelSize);
             _modelPath = $"ggml-{modelType.ToString().ToLower()}.bin";
@@ -65,6 +70,7 @@ public class WhisperTranscriptionService : ITranscriptionService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize Whisper model");
+            CheckNativeLibraries(); // Check again after failure for diagnostics
             throw;
         }
     }
@@ -181,6 +187,49 @@ public class WhisperTranscriptionService : ITranscriptionService
             }
             
             throw;
+        }
+    }
+
+    private void CheckNativeLibraries()
+    {
+        try
+        {
+            var currentDirectory = Directory.GetCurrentDirectory();
+            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+            var assemblyDirectory = Path.GetDirectoryName(assemblyLocation) ?? currentDirectory;
+            
+            _logger.LogInformation("Native library diagnostic check:");
+            _logger.LogInformation("Current directory: {CurrentDirectory}", currentDirectory);
+            _logger.LogInformation("Assembly location: {AssemblyLocation}", assemblyLocation);
+            _logger.LogInformation("Assembly directory: {AssemblyDirectory}", assemblyDirectory);
+            _logger.LogInformation("Runtime identifier: {RuntimeIdentifier}", RuntimeInformation.RuntimeIdentifier);
+            _logger.LogInformation("Process architecture: {ProcessArchitecture}", RuntimeInformation.ProcessArchitecture);
+
+            // Check for whisper natives in various expected locations
+            var possiblePaths = new[]
+            {
+                Path.Combine(assemblyDirectory, "whisper.dll"),
+                Path.Combine(assemblyDirectory, "ggml-whisper.dll"),
+                Path.Combine(assemblyDirectory, "ggml-cpu-whisper.dll"),
+                Path.Combine(assemblyDirectory, "ggml-base-whisper.dll"),
+                Path.Combine(currentDirectory, "whisper.dll"),
+                Path.Combine(assemblyDirectory, "runtimes", "win-x64", "whisper.dll"),
+                Path.Combine(currentDirectory, "runtimes", "win-x64", "whisper.dll")
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                var exists = File.Exists(path);
+                _logger.LogInformation("Checking native library: {Path} - {Status}", path, exists ? "FOUND" : "NOT FOUND");
+            }
+
+            // Check if we're running in single-file mode
+            var isSingleFile = string.IsNullOrEmpty(Assembly.GetExecutingAssembly().Location);
+            _logger.LogInformation("Single-file deployment: {IsSingleFile}", isSingleFile);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to perform native library diagnostic check");
         }
     }
 

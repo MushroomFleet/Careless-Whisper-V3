@@ -35,6 +35,7 @@ public class JsonSettingsService : ISettingsService
             var settings = JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = true
             });
 

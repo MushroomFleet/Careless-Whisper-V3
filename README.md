@@ -220,7 +220,7 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 
 ## 📄 License
 
-See License File in Project.
+[License to be determined]
 
 ---
 
