@@ -10,15 +10,15 @@ Transform your voice into text instantly OR get AI-powered responses with simple
 - Specially designed infinite canvas for your pastes 
 - takes advantage of NML (nested markup language) to save your work.
 
-## 🚀 Get Started Now - Download V3.0.1
+## 🚀 Get Started Now - Download V3.6.0
 
 **Ready to boost your productivity?** 
 
-👉 **[Download Latest Portable Release (v3.0.1)](../../releases/latest)**
+👉 **[Download Latest Portable Release (v3.6.0)](../../releases/latest)**
 
 **What you get:**
 - ⚡ **Instant Setup** - Single portable executable, no installer needed
-- 🎯 **Super Lightweight** - Only 120MB total (including tiny GGML weights)
+- 🎯 **Super Lightweight** - Only 157MB total (including tiny GGML weights)
 - 🛡️ **Local AI Processing** - Whisper.net keeps your voice private
 - 🔧 **Just Need .NET 8.0** - Free Microsoft runtime (quick install)
 
@@ -116,13 +116,13 @@ Right-click the system tray icon to access comprehensive settings:
 - **System Prompts**: Customize AI behavior
 - **Advanced Parameters**: Temperature, max tokens, streaming
 
-### Ollama (V3.0.1)
+### Ollama (V3.6.0)
 - **Local AI Models**: Run Llama, Mistral, Qwen, and other models locally
 - **Privacy First**: All processing happens on your machine
 - **No Internet Required**: Works completely offline
 - **Server Configuration**: Connect to local Ollama server
 - **Model Management**: Automatic discovery of installed models
-- **⚠️ Known Issue**: Model selection doesn't persist after app restart (being addressed)
+- **✅ Fixed**: JSON deserialization issues resolved for proper API integration
 
 ### Audio Notifications (V3.0)
 - **Notification Control**: Enable/disable audio feedback
@@ -172,8 +172,8 @@ Run popular open-source models locally:
 ## 🛠️ Build from Source
 
 ```bash
-git clone https://github.com/MushroomFleet/careless-whisper-V2
-cd careless-whisper-V2
+git clone https://github.com/MushroomFleet/careless-whisper-V3
+cd careless-whisper-V3
 dotnet build CarelessWhisperV2.csproj
 dotnet run --project CarelessWhisperV2.csproj
 ```
@@ -200,23 +200,26 @@ Requires .NET 8.0 SDK for development.
 
 ## 📝 Status
 
-**Current Version**: **3.0.1** - Latest stable release
+**Current Version**: **3.6.0** - Latest stable release
 
 ✅ **Working**: 
 - Dual-mode speech processing (local + AI)
 - Complete settings UI with all configuration options
 - Secure OpenRouter integration with **300+ models**
+- **Ollama local AI integration** with full API support
 - Custom audio notification system
 - **Revived transcription history** with search and management
 - Enhanced transcription with multiple Whisper models
 
-🎯 **V3.0.1 Achievements**:
+🎯 **V3.6.0 Achievements**:
+- **Dual AI Provider System**: OpenRouter (cloud) + Ollama (local) integration
+- **Enhanced Privacy Options**: Choose between cloud and local AI processing
+- **Fixed Ollama Issues**: Resolved JSON deserialization and model persistence
+- **Improved Transcription Logging**: All operations now properly logged
 - **Dual Hotkey System**: F1 for direct transcription, Shift+F2 for AI assistance
 - **300+ OpenRouter Models**: Massive selection of cutting-edge LLMs
-- **Transcription History Revival**: Complete session logging with system tray access
-- **Custom Audio Notifications**: Configurable sound feedback
+- **Local Model Support**: Llama, Mistral, Qwen, Code Llama, and custom models
 - **Enhanced Security**: Encrypted API key management
-- **Comprehensive Settings**: Full-featured configuration UI
 
 ## 🚀 Use Cases & Examples
 
@@ -248,4 +251,4 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 
 **Made for developers, writers, and anyone who wants both instant transcription AND AI assistance at their fingertips.**
 
-*V3.0.1: Where voice meets intelligence - Care Less, Achieve More.*
+*V3.6.0: Where voice meets intelligence - Care Less, Achieve More.*
