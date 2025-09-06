@@ -3,6 +3,12 @@ using System.IO;
 
 namespace CarelessWhisperV2.Models;
 
+public enum LlmProvider
+{
+    OpenRouter,
+    Ollama
+}
+
 public class ApplicationSettings : IValidatableObject
 {
     public string Theme { get; set; } = "Dark";
@@ -11,7 +17,9 @@ public class ApplicationSettings : IValidatableObject
     public AudioSettings Audio { get; set; } = new();
     public WhisperSettings Whisper { get; set; } = new();
     public LoggingSettings Logging { get; set; } = new();
+    public LlmProvider SelectedLlmProvider { get; set; } = LlmProvider.OpenRouter; // NEW
     public OpenRouterSettings OpenRouter { get; set; } = new(); // NEW
+    public OllamaSettings Ollama { get; set; } = new(); // NEW
     public AudioNotificationSettings AudioNotification { get; set; } = new(); // NEW
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -30,6 +38,9 @@ public class ApplicationSettings : IValidatableObject
             
         if (OpenRouter == null)
             yield return new ValidationResult("OpenRouter configuration is required");
+            
+        if (Ollama == null)
+            yield return new ValidationResult("Ollama configuration is required");
     }
 }
 
