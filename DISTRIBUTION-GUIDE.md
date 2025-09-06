@@ -1,19 +1,19 @@
-# Careless Whisper V3.1 - Distribution Guide
+# Careless Whisper V3.6 - Distribution Guide
 
 **Choose Your Distribution: Standalone vs Framework-Dependent**
 
 ## 🚀 Two Distribution Options Available
 
-We provide **two versions** of Careless Whisper V3.1 to meet different user needs:
+We provide **two versions** of Careless Whisper V3.6 to meet different user needs:
 
 ### 📦 Option 1: Standalone Distribution
-- **Size**: 329MB
+- **Size**: 157MB
 - **Setup**: Extract and run (zero installation)
 - **Requirements**: Windows 10/11 x64 only
 - **Best for**: General users, portable use, maximum simplicity
 
 ### 🔧 Option 2: Framework-Dependent Distribution  
-- **Size**: 82MB (75% smaller!)
+- **Size**: 86MB (45% smaller!)
 - **Setup**: Install .NET 8.0 Runtime + extract app
 - **Requirements**: Windows 10/11 x64 + .NET 8.0 Runtime
 - **Best for**: Technical users, IT deployments, smaller downloads
@@ -30,7 +30,7 @@ We provide **two versions** of Careless Whisper V3.1 to meet different user need
 - ✅ **Foolproof installation** - perfect for non-technical users
 
 ### Choose **Framework-Dependent** if you want:
-- ✅ **Smaller download** - 82MB vs 329MB (save bandwidth)
+- ✅ **Smaller download** - 86MB vs 157MB (save bandwidth)
 - ✅ **Faster updates** - only app files update, not entire runtime
 - ✅ **Professional deployment** - better for IT environments
 - ✅ **Shared runtime** - efficient if you use other .NET apps
@@ -40,19 +40,19 @@ We provide **two versions** of Careless Whisper V3.1 to meet different user need
 
 ## 📥 Download Links
 
-### Standalone Distribution (329MB)
+### Standalone Distribution (157MB)
 **📁 Folder**: `dist-standalone/`
-- `CarelessWhisperV2.exe` (255MB) - Complete standalone application
+- `CarelessWhisperV2.exe` (87MB) - Complete standalone application
 - `ggml-tiny.bin` (77MB) - Whisper AI model
-- `README-STANDALONE.md` - Installation guide
+- `DISTRIBUTION_README.md` - Installation guide
 
-### Framework-Dependent Distribution (82MB)  
+### Framework-Dependent Distribution (86MB)  
 **📁 Folder**: `dist-framework-dependent/`
-- `CarelessWhisperV2.exe` (465KB) - Main application
+- `CarelessWhisperV2.exe` (139KB) - Main application
 - `ggml-tiny.bin` (77MB) - Whisper AI model
-- `*.dll` files (~4MB) - Dependencies
-- `runtimes/` folder - Native libraries
-- `README-FRAMEWORK-DEPENDENT.md` - Installation guide
+- `*.dll` files (~9MB) - Dependencies and libraries
+- `runtimes/` folder - Native libraries (win-x64, win-x86, win-arm64)
+- `DISTRIBUTION_README.md` - Installation guide
 
 ---
 
@@ -60,14 +60,14 @@ We provide **two versions** of Careless Whisper V3.1 to meet different user need
 
 | Feature | Standalone | Framework-Dependent |
 |---------|------------|-------------------|
-| **Download Size** | 329MB | 82MB |
+| **Download Size** | 157MB | 86MB |
 | **Installation Steps** | 1 (Extract & run) | 2 (.NET + Extract) |
 | **.NET Runtime Required** | ❌ No | ✅ Yes (.NET 8.0) |
 | **Portability** | ✅ Fully portable | ❌ Needs runtime |
 | **First-time Setup** | ⚡ Instant | 🔧 5-10 minutes |
 | **Updates** | 📦 Replace entire package | 🔄 Replace app files only |
 | **Performance** | ⚡ Good | ⚡ Slightly better |
-| **Disk Space** | 329MB | 82MB + Runtime |
+| **Disk Space** | 157MB | 86MB + Runtime |
 | **Network Usage** | High initial | Low ongoing |
 | **Enterprise Deployment** | Simple but large | Professional |
 | **USB/Portable Use** | ✅ Perfect | ❌ Needs setup |
@@ -149,13 +149,15 @@ Both versions include **identical functionality**:
 
 ### 🎤 Core Features
 - **Speech-to-Text** (F1 key) - Local Whisper AI processing
-- **AI Assistant** (Shift+F2) - OpenRouter integration
+- **AI Assistant** (Shift+F2) - Dual provider support (OpenRouter + Ollama)
 - **System Tray Integration** - Minimized operation
 - **Global Hotkeys** - Works in any application
 - **Audio Device Selection** - Multiple microphone support
 
 ### 🔧 Settings & Configuration  
-- **OpenRouter API Integration** - Multiple AI models
+- **OpenRouter API Integration** - 300+ cloud-based AI models
+- **Ollama Integration** - Local AI models (Llama, Mistral, Qwen, etc.)
+- **Dual Provider Choice** - Switch between cloud and local AI
 - **Whisper Model Selection** - Performance vs accuracy
 - **Hotkey Customization** - Change default keys
 - **Auto-start Options** - Launch with Windows
