@@ -6,6 +6,7 @@ using CarelessWhisperV2.Services.Clipboard;
 using CarelessWhisperV2.Services.Logging;
 using CarelessWhisperV2.Services.Settings;
 using CarelessWhisperV2.Services.OpenRouter;
+using CarelessWhisperV2.Services.Ollama;
 using CarelessWhisperV2.Services.AudioNotification;
 using CarelessWhisperV2.Models;
 using System.IO;
@@ -22,6 +23,7 @@ public class TranscriptionOrchestrator : IDisposable
     private readonly ITranscriptionLogger _transcriptionLogger;
     private readonly ISettingsService _settingsService;
     private readonly IOpenRouterService _openRouterService; // NEW
+    private readonly IOllamaService _ollamaService; // NEW
     private readonly IAudioNotificationService _audioNotificationService; // NEW
     private readonly ILogger<TranscriptionOrchestrator> _logger;
     
@@ -40,6 +42,7 @@ public class TranscriptionOrchestrator : IDisposable
         ITranscriptionLogger transcriptionLogger,
         ISettingsService settingsService,
         IOpenRouterService openRouterService, // NEW
+        IOllamaService ollamaService, // NEW
         IAudioNotificationService audioNotificationService, // NEW
         ILogger<TranscriptionOrchestrator> logger)
     {
@@ -50,6 +53,7 @@ public class TranscriptionOrchestrator : IDisposable
         _transcriptionLogger = transcriptionLogger;
         _settingsService = settingsService;
         _openRouterService = openRouterService; // NEW
+        _ollamaService = ollamaService; // NEW
         _audioNotificationService = audioNotificationService; // NEW
         _logger = logger;
 
@@ -325,6 +329,7 @@ public class TranscriptionOrchestrator : IDisposable
     private async Task ProcessLlmTranscriptionAsync(string audioFilePath)
     {
         var startTime = DateTime.Now;
+        TranscriptionEntry? transcriptionEntry = null;
         
         try
         {
@@ -343,20 +348,77 @@ public class TranscriptionOrchestrator : IDisposable
                 return;
             }
 
-            _logger.LogInformation("LLM transcription completed, processing with OpenRouter: {Text}", 
+            _logger.LogInformation("LLM transcription completed, processing with {Provider}: {Text}", 
+                _settings.SelectedLlmProvider,
                 transcriptionResult.FullText.Substring(0, Math.Min(50, transcriptionResult.FullText.Length)));
 
-            // Process with OpenRouter LLM
-            if (await _openRouterService.IsConfiguredAsync())
+            // Create base transcription entry - this will always be logged regardless of LLM success
+            transcriptionEntry = new TranscriptionEntry
             {
-                var llmResponse = await _openRouterService.ProcessPromptAsync(
-                    transcriptionResult.FullText,
-                    _settings.OpenRouter.SystemPrompt,
-                    _settings.OpenRouter.SelectedModel);
+                Timestamp = startTime,
+                FullText = transcriptionResult.FullText,
+                Segments = transcriptionResult.Segments,
+                Language = transcriptionResult.Language,
+                Duration = DateTime.Now - startTime,
+                ModelUsed = $"Whisper:{_settings.Whisper.ModelSize}",
+                AudioFilePath = _settings.Logging.SaveAudioFiles ? audioFilePath : null
+            };
 
-                if (!string.IsNullOrWhiteSpace(llmResponse))
+            // Process with selected LLM provider
+            string llmResponse = "";
+            string llmError = "";
+            
+            try
+            {
+                if (_settings.SelectedLlmProvider == LlmProvider.OpenRouter)
                 {
-                    // Copy LLM response to clipboard
+                    if (await _openRouterService.IsConfiguredAsync())
+                    {
+                        llmResponse = await _openRouterService.ProcessPromptAsync(
+                            transcriptionResult.FullText,
+                            _settings.OpenRouter.SystemPrompt,
+                            _settings.OpenRouter.SelectedModel);
+                        transcriptionEntry.ModelUsed = $"Whisper:{_settings.Whisper.ModelSize} + OpenRouter:{_settings.OpenRouter.SelectedModel}";
+                    }
+                    else
+                    {
+                        llmError = "OpenRouter API not configured. Please check settings.";
+                        _logger.LogError("OpenRouter service not configured for LLM processing");
+                    }
+                }
+                else if (_settings.SelectedLlmProvider == LlmProvider.Ollama)
+                {
+                    if (await _ollamaService.IsConfiguredAsync())
+                    {
+                        llmResponse = await _ollamaService.ProcessPromptAsync(
+                            transcriptionResult.FullText,
+                            _settings.Ollama.SystemPrompt,
+                            _settings.Ollama.SelectedModel);
+                        transcriptionEntry.ModelUsed = $"Whisper:{_settings.Whisper.ModelSize} + Ollama:{_settings.Ollama.SelectedModel}";
+                    }
+                    else
+                    {
+                        llmError = "Ollama server not configured or not running. Please check settings.";
+                        _logger.LogError("Ollama service not configured for LLM processing");
+                    }
+                }
+            }
+            catch (Exception llmEx)
+            {
+                llmError = $"{_settings.SelectedLlmProvider} processing failed: {llmEx.Message}";
+                _logger.LogError(llmEx, "{Provider} processing failed: {Error}", _settings.SelectedLlmProvider, llmEx.Message);
+            }
+
+            // Update transcription entry based on LLM result
+            if (!string.IsNullOrWhiteSpace(llmResponse))
+            {
+                // LLM processing succeeded
+                transcriptionEntry.FullText = $"INPUT: {transcriptionResult.FullText}\n\nLLM RESPONSE: {llmResponse}";
+                transcriptionEntry.Duration = DateTime.Now - startTime;
+
+                // Copy LLM response to clipboard
+                try
+                {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         System.Windows.Clipboard.SetText(llmResponse);
@@ -381,24 +443,8 @@ public class TranscriptionOrchestrator : IDisposable
                         }
                     }
 
-                    // Log to file if enabled
-                    if (_settings.Logging.EnableTranscriptionLogging)
-                    {
-                        var transcriptionEntry = new TranscriptionEntry
-                        {
-                            Timestamp = startTime,
-                            FullText = $"INPUT: {transcriptionResult.FullText}\n\nLLM RESPONSE: {llmResponse}",
-                            Segments = transcriptionResult.Segments,
-                            Language = transcriptionResult.Language,
-                            Duration = DateTime.Now - startTime,
-                            ModelUsed = $"Whisper:{_settings.Whisper.ModelSize} + OpenRouter:{_settings.OpenRouter.SelectedModel}",
-                            AudioFilePath = _settings.Logging.SaveAudioFiles ? audioFilePath : null
-                        };
-                        
-                        await _transcriptionLogger.LogTranscriptionAsync(transcriptionEntry);
-                    }
-
-                    _logger.LogInformation("LLM transcription completed: {Response}", 
+                    _logger.LogInformation("LLM transcription completed with {Provider}: {Response}", 
+                        _settings.SelectedLlmProvider,
                         llmResponse.Substring(0, Math.Min(100, llmResponse.Length)));
 
                     TranscriptionCompleted?.Invoke(this, new TranscriptionCompletedEventArgs
@@ -412,27 +458,57 @@ public class TranscriptionOrchestrator : IDisposable
                         ProcessingTime = DateTime.Now - startTime
                     });
                 }
-                else
+                catch (Exception clipboardEx)
                 {
-                    _logger.LogWarning("OpenRouter returned empty response");
-                    TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
-                    {
-                        Message = "LLM processing returned empty response"
-                    });
+                    _logger.LogError(clipboardEx, "Failed to copy LLM response to clipboard: {Error}", clipboardEx.Message);
+                    // Add error to transcription entry but still log it
+                    transcriptionEntry.FullText += $"\n\nCLIPBOARD ERROR: {clipboardEx.Message}";
                 }
             }
             else
             {
-                _logger.LogError("OpenRouter service not configured for LLM processing");
+                // LLM processing failed or returned empty - still log the original transcription with error info
+                if (!string.IsNullOrWhiteSpace(llmError))
+                {
+                    transcriptionEntry.FullText = $"INPUT: {transcriptionResult.FullText}\n\nLLM ERROR: {llmError}";
+                }
+                
+                transcriptionEntry.Duration = DateTime.Now - startTime;
+
+                _logger.LogWarning("{Provider} returned empty response or failed: {Error}", _settings.SelectedLlmProvider, llmError);
                 TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
                 {
-                    Message = "OpenRouter API not configured. Please check settings."
+                    Message = !string.IsNullOrWhiteSpace(llmError) ? llmError : $"{_settings.SelectedLlmProvider} processing returned empty response"
                 });
+            }
+
+            // Always log the transcription entry if logging is enabled, regardless of LLM success/failure
+            if (_settings.Logging.EnableTranscriptionLogging && transcriptionEntry != null)
+            {
+                await _transcriptionLogger.LogTranscriptionAsync(transcriptionEntry);
+                _logger.LogDebug("Transcription entry logged to history: {Provider}", _settings.SelectedLlmProvider);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "LLM transcription processing failed: {Path}. Error: {ErrorMessage}", audioFilePath, ex.Message);
+            
+            // Even on complete failure, try to log what we have if transcriptionEntry was created
+            if (_settings.Logging.EnableTranscriptionLogging && transcriptionEntry != null)
+            {
+                transcriptionEntry.FullText += $"\n\nPROCESSING ERROR: {ex.Message}";
+                transcriptionEntry.Duration = DateTime.Now - startTime;
+                try
+                {
+                    await _transcriptionLogger.LogTranscriptionAsync(transcriptionEntry);
+                    _logger.LogDebug("Error transcription entry logged to history");
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log error transcription entry");
+                }
+            }
+            
             TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
             {
                 Exception = ex,

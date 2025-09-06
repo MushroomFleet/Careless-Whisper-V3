@@ -32,11 +32,13 @@ Extract, double-click, and start speaking! The app lives silently in your system
 - **F1**: **Speech-to-Text** → Hold, speak, release → Instant paste
 - **Shift+F2**: **Speech-Prompt-to-AI** → Voice your question → Get AI response pasted
 
-### 🤖 AI Integration with 300+ Models
-- **OpenRouter API**: Access to **300+ cutting-edge LLM models**
-- **GPT-4, Claude, Gemini, Llama** and hundreds more
+### 🤖 Dual AI Integration - Local & Cloud
+- **OpenRouter API**: Access to **300+ cutting-edge cloud models** (GPT-4, Claude, Gemini, etc.)
+- **Ollama Integration**: **Local AI models** for privacy-focused processing (Llama, Mistral, Qwen, etc.)
+- **Dual Provider Choice**: Switch between cloud power and local privacy
 - **Customizable Prompts**: Configure system behavior for your needs
 - **Streaming Responses**: Real-time AI output for faster interaction
+- **Offline Capability**: Ollama models work without internet connection
 
 ### 📋 Revived Transcription History
 - **System Tray Access** - Right-click tray icon → View transcription history
@@ -114,6 +116,14 @@ Right-click the system tray icon to access comprehensive settings:
 - **System Prompts**: Customize AI behavior
 - **Advanced Parameters**: Temperature, max tokens, streaming
 
+### Ollama (V3.0.1)
+- **Local AI Models**: Run Llama, Mistral, Qwen, and other models locally
+- **Privacy First**: All processing happens on your machine
+- **No Internet Required**: Works completely offline
+- **Server Configuration**: Connect to local Ollama server
+- **Model Management**: Automatic discovery of installed models
+- **⚠️ Known Issue**: Model selection doesn't persist after app restart (being addressed)
+
 ### Audio Notifications (V3.0)
 - **Notification Control**: Enable/disable audio feedback
 - **Custom Sounds**: Use your own WAV/MP3 files
@@ -133,7 +143,7 @@ Right-click the system tray icon to access comprehensive settings:
 - **Audio Processing**: NAudio for high-quality recording
 - **Speech Recognition**: Whisper.NET with GGML weights (120MB total)
 - **Global Hotkeys**: SharpHook for system-wide key detection
-- **AI Integration**: OpenRouter API with HTTP client for 300+ models
+- **AI Integration**: Dual provider system - OpenRouter API (300+ cloud models) + Ollama (local models)
 - **Secure Storage**: Windows DPAPI for API key encryption
 - **UI Framework**: Modern WPF with system tray (H.NotifyIcon)
 
@@ -150,6 +160,14 @@ Access to **300+ models** including:
 - **GPT-4o, Claude-3.5, Gemini Pro** for premium quality
 - **Llama, Mistral, Qwen, Command** for cost-effective processing
 - **Specialized models** for coding, reasoning, creative tasks, and more
+
+### Ollama Models (Local Processing)
+Run popular open-source models locally:
+- **Llama 3.2 (1B/3B)**: Fast, efficient for general tasks
+- **Mistral 7B/22B**: Excellent reasoning and coding
+- **Qwen 2.5**: Strong multilingual capabilities
+- **Code Llama**: Specialized for programming tasks
+- **Custom Models**: Support for any GGUF-compatible model
 
 ## 🛠️ Build from Source
 
@@ -231,5 +249,3 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 **Made for developers, writers, and anyone who wants both instant transcription AND AI assistance at their fingertips.**
 
 *V3.0.1: Where voice meets intelligence - Care Less, Achieve More.*
-
-

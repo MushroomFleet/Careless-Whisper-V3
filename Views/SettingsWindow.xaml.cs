@@ -9,6 +9,7 @@ using CarelessWhisperV2.Services.Settings;
 using CarelessWhisperV2.Services.Audio;
 using CarelessWhisperV2.Services.Orchestration;
 using CarelessWhisperV2.Services.OpenRouter;
+using CarelessWhisperV2.Services.Ollama;
 using CarelessWhisperV2.Services.Environment;
 using CarelessWhisperV2.Services.AudioNotification;
 using CarelessWhisperV2.Services.Network;
@@ -23,6 +24,7 @@ public partial class SettingsWindow : Window
     private readonly IAudioService _audioService;
     private readonly TranscriptionOrchestrator _orchestrator;
     private readonly IOpenRouterService _openRouterService;
+    private readonly IOllamaService _ollamaService;
     private readonly IEnvironmentService _environmentService;
     private readonly IAudioNotificationService _audioNotificationService;
     private readonly ILogger<SettingsWindow> _logger;
@@ -30,12 +32,14 @@ public partial class SettingsWindow : Window
     private string _capturedHotkey = "";
     private string _capturedLlmHotkey = "";
     private List<OpenRouterModel> _availableModels = new();
+    private List<OllamaModel> _availableOllamaModels = new();
 
     public SettingsWindow(
         ISettingsService settingsService, 
         IAudioService audioService,
         TranscriptionOrchestrator orchestrator,
         IOpenRouterService openRouterService,
+        IOllamaService ollamaService,
         IEnvironmentService environmentService,
         IAudioNotificationService audioNotificationService,
         ILogger<SettingsWindow> logger)
@@ -45,6 +49,7 @@ public partial class SettingsWindow : Window
         _audioService = audioService;
         _orchestrator = orchestrator;
         _openRouterService = openRouterService;
+        _ollamaService = ollamaService;
         _environmentService = environmentService;
         _audioNotificationService = audioNotificationService;
         _logger = logger;
@@ -99,8 +104,9 @@ public partial class SettingsWindow : Window
             .FirstOrDefault(item => item.Tag?.ToString() == _settings.Whisper.Language);
         EnableGpuCheckBox.IsChecked = _settings.Whisper.EnableGpuAcceleration;
         
-        // Load OpenRouter and Audio Notification settings
+        // Load OpenRouter, Ollama, and Audio Notification settings
         await LoadOpenRouterSettings();
+        await LoadOllamaSettings();
         LoadAudioNotificationSettings();
     }
 
@@ -456,6 +462,195 @@ public partial class SettingsWindow : Window
                 ModelPricingTextBlock.Text = $"${selectedModel.PricePerMToken}/1M tokens";
                 ModelContextTextBlock.Text = $"Context: {selectedModel.ContextLength:N0} tokens";
             }
+        }
+    }
+
+    // Ollama Event Handlers
+    private async void TestOllamaConnection_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var serverUrl = OllamaServerUrlTextBox.Text;
+            if (string.IsNullOrEmpty(serverUrl))
+            {
+                MessageBox.Show("Please enter a server URL first.", "Server URL Required", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            TestOllamaConnectionButton.IsEnabled = false;
+            OllamaConnectionStatusTextBlock.Text = "Testing connection...";
+            OllamaConnectionStatusTextBlock.Foreground = System.Windows.Media.Brushes.Blue;
+
+            // Test connection to Ollama server
+            var isConnected = await _ollamaService.ValidateConnectionAsync(serverUrl);
+            
+            if (isConnected)
+            {
+                OllamaConnectionStatusTextBlock.Text = "✓ Connected to Ollama server";
+                OllamaConnectionStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+                
+                // Refresh models after successful connection
+                await LoadAvailableOllamaModels();
+            }
+            else
+            {
+                OllamaConnectionStatusTextBlock.Text = "✗ Cannot connect to Ollama server";
+                OllamaConnectionStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ollama connection test failed");
+            OllamaConnectionStatusTextBlock.Text = $"✗ Test failed: {ex.Message}";
+            OllamaConnectionStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+        }
+        finally
+        {
+            TestOllamaConnectionButton.IsEnabled = true;
+        }
+    }
+
+    private async void RefreshOllamaModels_Click(object sender, RoutedEventArgs e)
+    {
+        await LoadAvailableOllamaModels(forceRefresh: true);
+    }
+
+    private async Task LoadAvailableOllamaModels(bool forceRefresh = false)
+    {
+        OllamaConnectionStatusTextBlock.Text = "Loading models...";
+        OllamaModelComboBox.Items.Clear();
+        
+        try
+        {
+            _availableOllamaModels = await _ollamaService.GetAvailableModelsAsync(forceRefresh);
+            
+            if (_availableOllamaModels.Count == 0)
+            {
+                OllamaConnectionStatusTextBlock.Text = "No models found. Ensure Ollama is running and models are installed.";
+                OllamaConnectionStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+                return;
+            }
+            
+            // Populate dropdown
+            foreach (var model in _availableOllamaModels)
+            {
+                var item = new ComboBoxItem
+                {
+                    Content = $"{model.Name}",
+                    Tag = model.Model
+                };
+                OllamaModelComboBox.Items.Add(item);
+            }
+            
+            // Select the stored model or default to first available
+            if (!SelectStoredOllamaModel() && OllamaModelComboBox.Items.Count > 0)
+            {
+                OllamaModelComboBox.SelectedIndex = 0;
+                // Update settings with the newly selected model
+                if (OllamaModelComboBox.SelectedItem is ComboBoxItem firstItem && firstItem.Tag != null)
+                {
+                    _settings.Ollama.SelectedModel = firstItem.Tag.ToString() ?? "";
+                }
+            }
+            
+            OllamaConnectionStatusTextBlock.Text = $"✓ Loaded {_availableOllamaModels.Count} models";
+            OllamaConnectionStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load models from Ollama server");
+            OllamaConnectionStatusTextBlock.Text = $"Error: {ex.Message}";
+            OllamaConnectionStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+        }
+    }
+
+    private bool SelectStoredOllamaModel()
+    {
+        try
+        {
+            var storedModelId = _settings.Ollama.SelectedModel;
+            if (string.IsNullOrEmpty(storedModelId))
+            {
+                _logger.LogDebug("No stored Ollama model ID found");
+                return false;
+            }
+
+            _logger.LogDebug("Attempting to select stored Ollama model: {ModelId}", storedModelId);
+
+            // Find the stored model in the dropdown
+            foreach (ComboBoxItem item in OllamaModelComboBox.Items)
+            {
+                if (item.Tag?.ToString() == storedModelId)
+                {
+                    OllamaModelComboBox.SelectedItem = item;
+                    _logger.LogInformation("Successfully selected stored Ollama model: {ModelId}", storedModelId);
+                    return true;
+                }
+            }
+            
+            // If exact match not found, try to find a partial match (for model variants)
+            foreach (ComboBoxItem item in OllamaModelComboBox.Items)
+            {
+                var itemModel = item.Tag?.ToString() ?? "";
+                if (itemModel.StartsWith(storedModelId.Split(':')[0], StringComparison.OrdinalIgnoreCase))
+                {
+                    OllamaModelComboBox.SelectedItem = item;
+                    _logger.LogInformation("Selected similar Ollama model '{ModelId}' (originally '{StoredModel}')", itemModel, storedModelId);
+                    return true;
+                }
+            }
+            
+            _logger.LogWarning("Stored Ollama model '{ModelId}' not found in available models. Available models: {AvailableModels}", 
+                storedModelId, 
+                string.Join(", ", OllamaModelComboBox.Items.Cast<ComboBoxItem>().Select(i => i.Tag?.ToString() ?? "null")));
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error selecting stored Ollama model");
+            return false;
+        }
+    }
+
+    private void OllamaModelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (OllamaModelComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag != null)
+        {
+            var selectedModelId = selectedItem.Tag.ToString();
+            var selectedModel = _availableOllamaModels.FirstOrDefault(m => m.Model == selectedModelId);
+            
+            if (selectedModel != null)
+            {
+                OllamaModelNameTextBlock.Text = selectedModel.Name;
+                OllamaModelSizeTextBlock.Text = $"Size: {selectedModel.Size / (1024 * 1024 * 1024):F1} GB";
+                OllamaModelFamilyTextBlock.Text = $"Family: {selectedModel.Details?.Family ?? "Unknown"}";
+                OllamaModelModifiedTextBlock.Text = $"Modified: {selectedModel.ModifiedAt:yyyy-MM-dd}";
+            }
+        }
+    }
+
+    private async Task LoadOllamaSettings()
+    {
+        try
+        {
+            // Load Ollama settings from ApplicationSettings
+            OllamaServerUrlTextBox.Text = _settings.Ollama.ServerUrl;
+            OllamaSystemPromptTextBox.Text = _settings.Ollama.SystemPrompt;
+            OllamaTemperatureSlider.Value = _settings.Ollama.Temperature;
+            OllamaMaxTokensTextBox.Text = _settings.Ollama.MaxTokens.ToString();
+            OllamaEnableStreamingCheckBox.IsChecked = _settings.Ollama.EnableStreaming;
+
+            // Load available models if server URL is configured
+            if (!string.IsNullOrEmpty(_settings.Ollama.ServerUrl))
+            {
+                await LoadAvailableOllamaModels();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load Ollama settings");
         }
     }
 
@@ -982,6 +1177,19 @@ public partial class SettingsWindow : Window
             }
         }
         
+        // Ollama V3.0 Settings
+        _settings.Ollama.ServerUrl = OllamaServerUrlTextBox.Text;
+        _settings.Ollama.SystemPrompt = OllamaSystemPromptTextBox.Text;
+        _settings.Ollama.Temperature = OllamaTemperatureSlider.Value;
+        _settings.Ollama.MaxTokens = int.Parse(OllamaMaxTokensTextBox.Text);
+        _settings.Ollama.EnableStreaming = OllamaEnableStreamingCheckBox.IsChecked ?? true;
+        
+        // Save selected Ollama model
+        if (OllamaModelComboBox.SelectedItem is ComboBoxItem selectedOllamaModelItem && selectedOllamaModelItem.Tag != null)
+        {
+            _settings.Ollama.SelectedModel = selectedOllamaModelItem.Tag.ToString();
+        }
+
         // Audio Notification V3.0 Settings
         _settings.AudioNotification.EnableNotifications = EnableNotificationsCheckBox.IsChecked ?? false;
         _settings.AudioNotification.PlayOnSpeechToText = PlayOnSpeechToTextCheckBox.IsChecked ?? false;
