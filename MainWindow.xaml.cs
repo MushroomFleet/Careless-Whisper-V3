@@ -1,8 +1,13 @@
 ﻿using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using CarelessWhisperV2.Services.Orchestration;
+using CarelessWhisperV2.Services.Settings;
+using CarelessWhisperV2.Services.OpenRouter;
+using CarelessWhisperV2.Services.Ollama;
+using CarelessWhisperV2.Models;
 using CarelessWhisperV2.Views;
 
 namespace CarelessWhisperV2;
@@ -12,80 +17,177 @@ public partial class MainWindow : Window
     private readonly TranscriptionOrchestrator _orchestrator;
     private readonly ILogger<MainWindow> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ISettingsService _settingsService;
+    private readonly IOpenRouterService _openRouterService;
+    private readonly IOllamaService _ollamaService;
 
-    public MainWindow(TranscriptionOrchestrator orchestrator, ILogger<MainWindow> logger, IServiceProvider serviceProvider)
+    public MainWindow(TranscriptionOrchestrator orchestrator, ILogger<MainWindow> logger, IServiceProvider serviceProvider,
+                     ISettingsService settingsService, IOpenRouterService openRouterService, IOllamaService ollamaService)
     {
-        InitializeComponent();
-        _orchestrator = orchestrator;
-        _logger = logger;
-        _serviceProvider = serviceProvider;
+        Console.WriteLine("STARTUP: MainWindow constructor started");
         
-        // Configure for tray-only operation initially
-        this.WindowState = WindowState.Minimized;
-        this.ShowInTaskbar = false;
-        this.Hide();
-        
-        // Subscribe to orchestrator events
-        _orchestrator.TranscriptionCompleted += OnTranscriptionCompleted;
-        _orchestrator.TranscriptionError += OnTranscriptionError;
-        
-        // Initialize the orchestrator
-        _ = Task.Run(InitializeOrchestratorAsync);
-    }
-
-    private async Task InitializeOrchestratorAsync()
-    {
         try
         {
-            await _orchestrator.InitializeAsync();
+            Console.WriteLine("STARTUP: Calling InitializeComponent...");
+            InitializeComponent();
+            Console.WriteLine("STARTUP: InitializeComponent completed");
             
-            // Update UI on main thread
-            Dispatcher.Invoke(() =>
-            {
-                StatusText.Text = "Ready - Press F1 to record";
-            });
+            // Store dependencies
+            _orchestrator = orchestrator;
+            _logger = logger;
+            _serviceProvider = serviceProvider;
+            _settingsService = settingsService;
+            _openRouterService = openRouterService;
+            _ollamaService = ollamaService;
+            
+            Console.WriteLine("STARTUP: Dependencies assigned");
+            
+            _logger.LogInformation("MainWindow constructor started - FIXED MODE");
+            
+            // Configure for tray-only operation initially
+            this.WindowState = WindowState.Minimized;
+            this.ShowInTaskbar = false;
+            this.Hide();
+            
+            Console.WriteLine("STARTUP: Window state configured");
+            
+            // Subscribe to orchestrator events
+            _orchestrator.TranscriptionCompleted += OnTranscriptionCompleted;
+            _orchestrator.TranscriptionError += OnTranscriptionError;
+            
+            Console.WriteLine("STARTUP: Event subscriptions completed");
+            
+            // Subscribe to Loaded event for safe async initialization
+            this.Loaded += MainWindow_Loaded;
+            
+            Console.WriteLine("STARTUP: Loaded event subscribed");
+            _logger.LogInformation("MainWindow constructor completed - FIXED MODE");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize orchestrator");
+            Console.WriteLine($"STARTUP ERROR: MainWindow constructor failed: {ex.Message}");
+            Console.WriteLine($"STARTUP ERROR: Stack trace: {ex.StackTrace}");
+            throw;
+        }
+    }
+
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Console.WriteLine("STARTUP: MainWindow_Loaded event triggered");
+            _logger.LogInformation("MainWindow loaded successfully");
             
-            Dispatcher.Invoke(() =>
+            // Initialize the orchestrator
+            try
             {
-                StatusText.Text = "Error during initialization";
-                MessageBox.Show($"Failed to initialize application: {ex.Message}", 
-                    "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            });
+                Console.WriteLine("STARTUP: Initializing orchestrator...");
+                await _orchestrator.InitializeAsync();
+                _logger.LogInformation("Orchestrator initialized successfully");
+                Console.WriteLine("STARTUP: Orchestrator initialization completed");
+                
+                // Update status to show system is ready
+                Dispatcher.Invoke(() =>
+                {
+                    var statusText = FindName("StatusText") as TextBlock;
+                    if (statusText != null)
+                    {
+                        statusText.Text = "Ready - F1 to record";
+                    }
+                });
+                _logger.LogInformation("Orchestrator ready - F1 to record");
+                Console.WriteLine("STARTUP: Orchestrator ready - F1 to record");
+            }
+            catch (Exception orchEx)
+            {
+                _logger.LogError(orchEx, "Failed to initialize orchestrator");
+                Console.WriteLine($"STARTUP: Orchestrator initialization failed: {orchEx.Message}");
+            }
+            
+            // Load provider settings
+            try
+            {
+                Console.WriteLine("STARTUP: Loading provider settings...");
+                LoadProviderSettings(); // Call without await since it's async void
+                _logger.LogInformation("Provider settings loading started");
+                Console.WriteLine("STARTUP: Provider settings loading started");
+            }
+            catch (Exception settingsEx)
+            {
+                _logger.LogError(settingsEx, "Failed to start provider settings load");
+                Console.WriteLine($"STARTUP: Provider settings load failed: {settingsEx.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"STARTUP ERROR: MainWindow_Loaded failed: {ex.Message}");
+            _logger.LogError(ex, "MainWindow_Loaded failed");
         }
     }
 
     private void OnTranscriptionCompleted(object? sender, TranscriptionCompletedEventArgs e)
     {
+        _logger.LogInformation("Transcription completed: {Text}", e.TranscriptionResult.FullText);
+        
+        // Update UI with completion status and preview
         Dispatcher.Invoke(() =>
         {
-            try
+            var statusText = FindName("StatusText") as TextBlock;
+            if (statusText != null)
             {
-                StatusText.Text = $"Last transcription: \"{e.TranscriptionResult.FullText.Substring(0, Math.Min(50, e.TranscriptionResult.FullText.Length))}...\"";
-            }
-            catch
-            {
-                // Fallback if UI elements aren't ready
-                _logger.LogInformation("Transcription completed: {Text}", e.TranscriptionResult.FullText);
+                var previewText = e.TranscriptionResult.FullText;
+                if (previewText.Length > 100)
+                {
+                    previewText = previewText.Substring(0, 100) + "...";
+                }
+                statusText.Text = $"Completed: {previewText}";
+                
+                // Clear status after 10 seconds
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(10)
+                };
+                timer.Tick += (s, args) =>
+                {
+                    timer.Stop();
+                    var statusTextInner = FindName("StatusText") as TextBlock;
+                    if (statusTextInner != null)
+                    {
+                        statusTextInner.Text = "Ready - F1 to record";
+                    }
+                };
+                timer.Start();
             }
         });
     }
 
     private void OnTranscriptionError(object? sender, TranscriptionErrorEventArgs e)
     {
+        _logger.LogError("Transcription error: {Message}", e.Message);
+        
+        // Update UI with error status
         Dispatcher.Invoke(() =>
         {
-            try
+            var statusText = FindName("StatusText") as TextBlock;
+            if (statusText != null)
             {
-                StatusText.Text = $"Error: {e.Message}";
-            }
-            catch
-            {
-                // Fallback if UI elements aren't ready
-                _logger.LogError("Transcription error: {Message}", e.Message);
+                statusText.Text = $"Error: {e.Message}";
+                
+                // Clear error status after 15 seconds
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(15)
+                };
+                timer.Tick += (s, args) =>
+                {
+                    timer.Stop();
+                    var statusTextInner = FindName("StatusText") as TextBlock;
+                    if (statusTextInner != null)
+                    {
+                        statusTextInner.Text = "Ready - F1 to record";
+                    }
+                };
+                timer.Start();
             }
         });
     }
@@ -179,8 +281,200 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        // Clean up resources
-        _orchestrator?.Dispose();
+        // Clean up resources - orchestrator removed for minimal testing
         base.OnClosed(e);
+    }
+
+    private async void LoadProviderSettings()
+    {
+        try
+        {
+            var settings = await _settingsService.LoadSettingsAsync<ApplicationSettings>();
+            _logger.LogInformation("Provider settings loaded: {Provider}", settings.SelectedLlmProvider);
+            
+            // Update radio buttons to match saved settings
+            Dispatcher.Invoke(() =>
+            {
+                var openRouterRadio = FindName("OpenRouterRadioButton") as RadioButton;
+                var ollamaRadio = FindName("OllamaRadioButton") as RadioButton;
+                
+                if (openRouterRadio != null && ollamaRadio != null)
+                {
+                    if (settings.SelectedLlmProvider == LlmProvider.OpenRouter)
+                    {
+                        openRouterRadio.IsChecked = true;
+                        ollamaRadio.IsChecked = false;
+                    }
+                    else
+                    {
+                        openRouterRadio.IsChecked = false;
+                        ollamaRadio.IsChecked = true;
+                    }
+                    
+                    _logger.LogInformation("Radio buttons updated to reflect {Provider} provider", settings.SelectedLlmProvider);
+                }
+            });
+            
+            // Update provider status display
+            await UpdateProviderStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load provider settings");
+        }
+    }
+
+    private async void LlmProvider_Changed(object sender, RoutedEventArgs e)
+    {
+        // Guard against early event firing during InitializeComponent
+        if (_logger == null || _settingsService == null) return;
+        
+        try
+        {
+            var radioButton = sender as RadioButton;
+            if (radioButton?.IsChecked == true)
+            {
+                var settings = await _settingsService.LoadSettingsAsync<ApplicationSettings>();
+                
+                // Determine which provider was selected
+                LlmProvider selectedProvider;
+                if (radioButton.Name == "OpenRouterRadioButton")
+                {
+                    selectedProvider = LlmProvider.OpenRouter;
+                }
+                else if (radioButton.Name == "OllamaRadioButton")
+                {
+                    selectedProvider = LlmProvider.Ollama;
+                }
+                else
+                {
+                    _logger.LogWarning("Unknown radio button clicked: {Name}", radioButton.Name);
+                    return;
+                }
+                
+                // Only update if the provider actually changed
+                if (settings.SelectedLlmProvider != selectedProvider)
+                {
+                    _logger.LogInformation("LLM provider changed from {Old} to {New}", 
+                        settings.SelectedLlmProvider, selectedProvider);
+                    
+                    settings.SelectedLlmProvider = selectedProvider;
+                    await _settingsService.SaveSettingsAsync(settings);
+                    
+                    // Update the orchestrator with new settings
+                    await _orchestrator.UpdateSettingsAsync(settings);
+                    
+                    // Update provider status display
+                    await UpdateProviderStatusAsync();
+                    
+                    _logger.LogInformation("Successfully switched to {Provider} provider", selectedProvider);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to change LLM provider");
+            
+            // Show error to user and revert radio button selection
+            Dispatcher.Invoke(() =>
+            {
+                var statusText = FindName("StatusText") as TextBlock;
+                if (statusText != null)
+                {
+                    statusText.Text = $"Error switching provider: {ex.Message}";
+                }
+            });
+        }
+    }
+
+    private async Task UpdateProviderStatusAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.LoadSettingsAsync<ApplicationSettings>();
+            
+            string providerName = "";
+            
+            if (settings.SelectedLlmProvider == LlmProvider.OpenRouter)
+            {
+                providerName = "OpenRouter";
+                _logger.LogInformation("OpenRouter provider selected and enabled");
+            }
+            else
+            {
+                providerName = "Ollama";
+                _logger.LogInformation("Ollama provider selected and enabled");
+            }
+            
+            // Update UI on the UI thread - always show enabled status in green for selected provider
+            Dispatcher.Invoke(() =>
+            {
+                var providerStatus = FindName("ProviderStatusTextBlock") as TextBlock;
+                if (providerStatus != null)
+                {
+                    providerStatus.Text = $"✓ {providerName} Enabled";
+                    providerStatus.Foreground = System.Windows.Media.Brushes.Green;
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update provider status");
+            
+            // Show error status
+            Dispatcher.Invoke(() =>
+            {
+                var providerStatus = FindName("ProviderStatusTextBlock") as TextBlock;
+                if (providerStatus != null)
+                {
+                    providerStatus.Text = "✗ Status Error";
+                    providerStatus.Foreground = System.Windows.Media.Brushes.Red;
+                }
+            });
+        }
+    }
+
+    private async Task<bool> TestOpenRouterConnectionAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.LoadSettingsAsync<ApplicationSettings>();
+            
+            if (string.IsNullOrWhiteSpace(settings.OpenRouter.ApiKey))
+            {
+                return false;
+            }
+
+            // Test connection by checking available models
+            var models = await _openRouterService.GetAvailableModelsAsync();
+            return models?.Any() == true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "OpenRouter connection test failed");
+            return false;
+        }
+    }
+
+    private async Task<bool> TestOllamaConnectionAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.LoadSettingsAsync<ApplicationSettings>();
+            
+            if (string.IsNullOrWhiteSpace(settings.Ollama.ServerUrl))
+            {
+                return false;
+            }
+
+            // Test connection by checking if server is reachable
+            var models = await _ollamaService.GetAvailableModelsAsync();
+            return models?.Any() == true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Ollama connection test failed");
+            return false;
+        }
     }
 }
