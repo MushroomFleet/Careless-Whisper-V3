@@ -10,20 +10,23 @@
     
     <!-- Distribution Configuration -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
+    <!-- Default to framework-dependent for development -->
+    <SelfContained Condition="'$(PublishProfile)' == 'Standalone'">true</SelfContained>
+    <SelfContained Condition="'$(PublishProfile)' != 'Standalone'">false</SelfContained>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- Only single file for standalone builds -->
+    <PublishSingleFile Condition="'$(PublishProfile)' == 'Standalone'">true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract Condition="'$(PublishProfile)' == 'Standalone'">true</IncludeNativeLibrariesForSelfExtract>
     
     <!-- Application Metadata -->
-    <AssemblyTitle>Careless Whisper V3.1</AssemblyTitle>
+    <AssemblyTitle>Careless Whisper V3.6</AssemblyTitle>
     <AssemblyDescription>Dual-Mode Voice-to-Text &amp; AI Assistant for Windows</AssemblyDescription>
     <AssemblyCompany>MushroomFleet</AssemblyCompany>
-    <AssemblyProduct>Careless Whisper V3.1</AssemblyProduct>
+    <AssemblyProduct>Careless Whisper V3.6</AssemblyProduct>
     <AssemblyCopyright>Copyright © 2025 MushroomFleet</AssemblyCopyright>
-    <AssemblyVersion>3.1.0.0</AssemblyVersion>
-    <FileVersion>3.1.0.0</FileVersion>
-    <Version>3.1.0</Version>
+    <AssemblyVersion>3.6.0.0</AssemblyVersion>
+    <FileVersion>3.6.0.0</FileVersion>
+    <Version>3.6.0</Version>
     
     <!-- Application Icon -->
     <!-- <ApplicationIcon>Resources\app-icon.ico</ApplicationIcon> -->

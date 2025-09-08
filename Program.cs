@@ -23,25 +23,49 @@ public class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // Allocate console for WPF app to see output
-        if (!AllocConsole())
+        // Console allocation - only for development or when explicitly requested
+        // In production distribution builds, console should be suppressed unless --debug is passed
+        bool isExplicitDebugRequest = args.Contains("--debug");
+        bool isDevelopmentEnvironment = System.Diagnostics.Debugger.IsAttached;
+        bool shouldShowDebug = isExplicitDebugRequest || (isDevelopmentEnvironment && !IsProductionBuild());
+        bool consoleAllocated = false;
+        
+        if (shouldShowDebug)
         {
-            AttachConsole(-1); // Attach to parent console if available
+            try
+            {
+                // Try to allocate console for WPF app to see output
+                if (AllocConsole())
+                {
+                    consoleAllocated = true;
+                }
+                else
+                {
+                    // If allocation fails, try to attach to parent console
+                    consoleAllocated = AttachConsole(-1);
+                }
+            }
+            catch (Exception)
+            {
+                // Ignore console allocation errors - continue without debug output
+                consoleAllocated = false;
+            }
         }
         
-        Console.WriteLine("DEPENDENCY INJECTION TEST: Starting...");
+        // Use conditional console output that only writes when console is available
+        WriteDebugLine("DEPENDENCY INJECTION TEST: Starting...", shouldShowDebug && consoleAllocated);
         
         try
         {
-            Console.WriteLine("DI TEST: Creating host builder...");
+            WriteDebugLine("DI TEST: Creating host builder...", shouldShowDebug && consoleAllocated);
             var builder = Host.CreateApplicationBuilder(args);
             
-            Console.WriteLine("DI TEST: Configuring logging...");
+            WriteDebugLine("DI TEST: Configuring logging...", shouldShowDebug && consoleAllocated);
             builder.Logging.AddConsole();
             builder.Logging.AddDebug();
             builder.Logging.SetMinimumLevel(LogLevel.Debug);
             
-            Console.WriteLine("STARTUP: Registering all services for Careless Whisper V3...");
+            WriteDebugLine("STARTUP: Registering all services for Careless Whisper V3...", shouldShowDebug && consoleAllocated);
             
             // Configuration
             builder.Services.Configure<ApplicationSettings>(
@@ -70,69 +94,75 @@ public class Program
             builder.Services.AddTransient<Views.SettingsWindow>();
             builder.Services.AddTransient<Views.TranscriptionHistoryWindow>();
             
-            Console.WriteLine("STARTUP: All services registered successfully");
+            WriteDebugLine("STARTUP: All services registered successfully", shouldShowDebug && consoleAllocated);
             
-            Console.WriteLine("DI TEST: Building host...");
+            WriteDebugLine("DI TEST: Building host...", shouldShowDebug && consoleAllocated);
             var host = builder.Build();
             
-            Console.WriteLine("DI TEST: Getting logger...");
+            WriteDebugLine("DI TEST: Getting logger...", shouldShowDebug && consoleAllocated);
             var logger = host.Services.GetRequiredService<ILogger<Program>>();
             logger.LogInformation("DI TEST: Logger obtained successfully");
 
-            Console.WriteLine("DI TEST: Testing ISettingsService resolution...");
+            WriteDebugLine("DI TEST: Testing ISettingsService resolution...", shouldShowDebug && consoleAllocated);
             var settingsService = host.Services.GetRequiredService<ISettingsService>();
             logger.LogInformation("DI TEST: ISettingsService resolved successfully");
             
-            Console.WriteLine("DI TEST: Now testing MainWindow resolution - THIS IS THE CRITICAL TEST...");
+            WriteDebugLine("DI TEST: Now testing MainWindow resolution - THIS IS THE CRITICAL TEST...", shouldShowDebug && consoleAllocated);
             try
             {
                 var mainWindow = host.Services.GetRequiredService<MainWindow>();
-                Console.WriteLine("DI TEST: MainWindow resolved successfully!");
+                WriteDebugLine("DI TEST: MainWindow resolved successfully!", shouldShowDebug && consoleAllocated);
                 logger.LogInformation("DI TEST: MainWindow resolved successfully!");
                 
-                Console.WriteLine("DI TEST: Creating WPF Application...");
+                WriteDebugLine("DI TEST: Creating WPF Application...", shouldShowDebug && consoleAllocated);
                 var app = new Application();
                 
                 mainWindow.Closed += (s, e) => 
                 {
-                    Console.WriteLine("DI TEST: Window closed, shutting down...");
+                    WriteDebugLine("DI TEST: Window closed, shutting down...", shouldShowDebug && consoleAllocated);
                     host.Dispose();
                     app.Shutdown();
                 };
                 
-                Console.WriteLine("DI TEST: Showing MainWindow...");
+                WriteDebugLine("DI TEST: Showing MainWindow...", shouldShowDebug && consoleAllocated);
                 mainWindow.Show();
                 
-                Console.WriteLine("DI TEST: Running application with MainWindow...");
+                WriteDebugLine("DI TEST: Running application with MainWindow...", shouldShowDebug && consoleAllocated);
                 app.Run(mainWindow);
             }
             catch (Exception mainWindowEx)
             {
-                Console.WriteLine($"DI TEST CRITICAL ERROR: MainWindow resolution failed!");
-                Console.WriteLine($"DI TEST ERROR: {mainWindowEx.Message}");
-                Console.WriteLine($"DI TEST STACK: {mainWindowEx.StackTrace}");
+                WriteDebugLine($"DI TEST CRITICAL ERROR: MainWindow resolution failed!", shouldShowDebug && consoleAllocated);
+                WriteDebugLine($"DI TEST ERROR: {mainWindowEx.Message}", shouldShowDebug && consoleAllocated);
+                WriteDebugLine($"DI TEST STACK: {mainWindowEx.StackTrace}", shouldShowDebug && consoleAllocated);
                 
                 var innerEx = mainWindowEx.InnerException;
                 int depth = 0;
                 while (innerEx != null && depth < 10)
                 {
-                    Console.WriteLine($"DI TEST ERROR: Inner exception {depth}: {innerEx.Message}");
+                    WriteDebugLine($"DI TEST ERROR: Inner exception {depth}: {innerEx.Message}", shouldShowDebug && consoleAllocated);
                     innerEx = innerEx.InnerException;
                     depth++;
                 }
                 
-                Console.WriteLine("DI TEST: THIS IS LIKELY THE SOURCE OF THE STARTUP CRASH!");
-                Console.ReadKey();
+                WriteDebugLine("DI TEST: THIS IS LIKELY THE SOURCE OF THE STARTUP CRASH!", shouldShowDebug && consoleAllocated);
+                if (System.Diagnostics.Debugger.IsAttached)
+                {
+                    Console.ReadKey();
+                }
                 return;
             }
             
-            Console.WriteLine("DI TEST: Application ended normally");
+            WriteDebugLine("DI TEST: Application ended normally", shouldShowDebug && consoleAllocated);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"DI TEST ERROR: {ex.Message}");
-            Console.WriteLine($"DI TEST STACK: {ex.StackTrace}");
-            Console.ReadKey();
+            WriteDebugLine($"DI TEST ERROR: {ex.Message}", shouldShowDebug && consoleAllocated);
+            WriteDebugLine($"DI TEST STACK: {ex.StackTrace}", shouldShowDebug && consoleAllocated);
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                Console.ReadKey();
+            }
         }
     }
     
@@ -141,4 +171,33 @@ public class Program
     
     [System.Runtime.InteropServices.DllImport("kernel32.dll")]
     private static extern bool AttachConsole(int dwProcessId);
+    
+    private static void WriteDebugLine(string message, bool shouldWrite = true)
+    {
+        // Only write to console if explicitly requested and conditions are met
+        if (shouldWrite)
+        {
+            try
+            {
+                Console.WriteLine(message);
+            }
+            catch
+            {
+                // Ignore console write errors in production
+            }
+        }
+    }
+    
+    private static bool IsProductionBuild()
+    {
+        // Detect if we're running from a distribution build
+        // Production builds are typically run from dist-* directories or have specific characteristics
+        var currentDirectory = System.Environment.CurrentDirectory;
+        var executablePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        
+        // Check if running from distribution directories
+        return currentDirectory.Contains("dist-") || 
+               executablePath.Contains("dist-") ||
+               !System.Diagnostics.Debugger.IsAttached;
+    }
 }

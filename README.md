@@ -10,11 +10,11 @@ Transform your voice into text instantly OR get AI-powered responses with simple
 - Specially designed infinite canvas for your pastes 
 - takes advantage of NML (nested markup language) to save your work.
 
-## 🚀 Get Started Now - Download V3.6.0
+## 🚀 Get Started Now - Download V3.6
 
 **Ready to boost your productivity?** 
 
-👉 **[Download Latest Portable Release (v3.6.0)](../../releases/latest)**
+👉 **[Download Latest Portable Release (v3.6.1)](../../releases/latest)**
 
 **What you get:**
 - ⚡ **Instant Setup** - Single portable executable, no installer needed

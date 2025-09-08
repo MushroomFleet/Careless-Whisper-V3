@@ -24,13 +24,13 @@ public partial class MainWindow : Window
     public MainWindow(TranscriptionOrchestrator orchestrator, ILogger<MainWindow> logger, IServiceProvider serviceProvider,
                      ISettingsService settingsService, IOpenRouterService openRouterService, IOllamaService ollamaService)
     {
-        Console.WriteLine("STARTUP: MainWindow constructor started");
+        WriteDebugLine("STARTUP: MainWindow constructor started");
         
         try
         {
-            Console.WriteLine("STARTUP: Calling InitializeComponent...");
+            WriteDebugLine("STARTUP: Calling InitializeComponent...");
             InitializeComponent();
-            Console.WriteLine("STARTUP: InitializeComponent completed");
+            WriteDebugLine("STARTUP: InitializeComponent completed");
             
             // Store dependencies
             _orchestrator = orchestrator;
@@ -40,7 +40,7 @@ public partial class MainWindow : Window
             _openRouterService = openRouterService;
             _ollamaService = ollamaService;
             
-            Console.WriteLine("STARTUP: Dependencies assigned");
+            WriteDebugLine("STARTUP: Dependencies assigned");
             
             _logger.LogInformation("MainWindow constructor started - FIXED MODE");
             
@@ -49,24 +49,24 @@ public partial class MainWindow : Window
             this.ShowInTaskbar = false;
             this.Hide();
             
-            Console.WriteLine("STARTUP: Window state configured");
+            WriteDebugLine("STARTUP: Window state configured");
             
             // Subscribe to orchestrator events
             _orchestrator.TranscriptionCompleted += OnTranscriptionCompleted;
             _orchestrator.TranscriptionError += OnTranscriptionError;
             
-            Console.WriteLine("STARTUP: Event subscriptions completed");
+            WriteDebugLine("STARTUP: Event subscriptions completed");
             
             // Subscribe to Loaded event for safe async initialization
             this.Loaded += MainWindow_Loaded;
             
-            Console.WriteLine("STARTUP: Loaded event subscribed");
+            WriteDebugLine("STARTUP: Loaded event subscribed");
             _logger.LogInformation("MainWindow constructor completed - FIXED MODE");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"STARTUP ERROR: MainWindow constructor failed: {ex.Message}");
-            Console.WriteLine($"STARTUP ERROR: Stack trace: {ex.StackTrace}");
+            WriteDebugLine($"STARTUP ERROR: MainWindow constructor failed: {ex.Message}");
+            WriteDebugLine($"STARTUP ERROR: Stack trace: {ex.StackTrace}");
             throw;
         }
     }
@@ -75,16 +75,16 @@ public partial class MainWindow : Window
     {
         try
         {
-            Console.WriteLine("STARTUP: MainWindow_Loaded event triggered");
+            WriteDebugLine("STARTUP: MainWindow_Loaded event triggered");
             _logger.LogInformation("MainWindow loaded successfully");
             
             // Initialize the orchestrator
             try
             {
-                Console.WriteLine("STARTUP: Initializing orchestrator...");
+                WriteDebugLine("STARTUP: Initializing orchestrator...");
                 await _orchestrator.InitializeAsync();
                 _logger.LogInformation("Orchestrator initialized successfully");
-                Console.WriteLine("STARTUP: Orchestrator initialization completed");
+                WriteDebugLine("STARTUP: Orchestrator initialization completed");
                 
                 // Update status to show system is ready
                 Dispatcher.Invoke(() =>
@@ -96,31 +96,31 @@ public partial class MainWindow : Window
                     }
                 });
                 _logger.LogInformation("Orchestrator ready - F1 to record");
-                Console.WriteLine("STARTUP: Orchestrator ready - F1 to record");
+                WriteDebugLine("STARTUP: Orchestrator ready - F1 to record");
             }
             catch (Exception orchEx)
             {
                 _logger.LogError(orchEx, "Failed to initialize orchestrator");
-                Console.WriteLine($"STARTUP: Orchestrator initialization failed: {orchEx.Message}");
+                WriteDebugLine($"STARTUP: Orchestrator initialization failed: {orchEx.Message}");
             }
             
             // Load provider settings
             try
             {
-                Console.WriteLine("STARTUP: Loading provider settings...");
+                WriteDebugLine("STARTUP: Loading provider settings...");
                 LoadProviderSettings(); // Call without await since it's async void
                 _logger.LogInformation("Provider settings loading started");
-                Console.WriteLine("STARTUP: Provider settings loading started");
+                WriteDebugLine("STARTUP: Provider settings loading started");
             }
             catch (Exception settingsEx)
             {
                 _logger.LogError(settingsEx, "Failed to start provider settings load");
-                Console.WriteLine($"STARTUP: Provider settings load failed: {settingsEx.Message}");
+                WriteDebugLine($"STARTUP: Provider settings load failed: {settingsEx.Message}");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"STARTUP ERROR: MainWindow_Loaded failed: {ex.Message}");
+            WriteDebugLine($"STARTUP ERROR: MainWindow_Loaded failed: {ex.Message}");
             _logger.LogError(ex, "MainWindow_Loaded failed");
         }
     }
@@ -475,6 +475,22 @@ public partial class MainWindow : Window
         {
             _logger.LogDebug(ex, "Ollama connection test failed");
             return false;
+        }
+    }
+
+    private static void WriteDebugLine(string message)
+    {
+        // Only write to console if debugger is attached or debug flag is present
+        if (System.Diagnostics.Debugger.IsAttached || System.Environment.GetCommandLineArgs().Contains("--debug"))
+        {
+            try
+            {
+                Console.WriteLine(message);
+            }
+            catch
+            {
+                // Ignore console write errors in production
+            }
         }
     }
 }
