@@ -9,22 +9,19 @@ This document lists all files in the project with upload recommendations for Git
 ## Root Directory
 
 ```
-c:/Projects/carelesswhisperV4/Careless-Whisper-V3/
+d:/TOOLS/carelesswhisper361-plus/Careless-Whisper-V3/
 ├── ✅ App.xaml                          # WPF application definition
 ├── ✅ App.xaml.cs                       # WPF application code-behind
 ├── ✅ AssemblyInfo.cs                   # Assembly metadata
 ├── ✅ build-framework-dependent.ps1     # Build script for framework-dependent release
 ├── ✅ build-standalone.ps1              # Build script for standalone release
 ├── ✅ careless-whisper-V2.sln           # Visual Studio solution file
-├── ❌ Careless-Whisper-v3.6.0-portable.zip # Release package (build artifact)
-├── ❌ Careless-Whisper-v3.6.0-standalone.zip # Release package (build artifact)
-├── ❌ Careless-Whisper-v3.6.1-portable.zip # Release package (build artifact)
-├── ❌ Careless-Whisper-v3.6.1-standalone.zip # Release package (build artifact)
+├── ❌ Careless-Whisper-v3.6.2-portable-lite.zip # Release package (build artifact)
 ├── ✅ CarelessWhisperV2.csproj          # Project file
 ├── ✅ DISTRIBUTION_README.md            # Distribution documentation
 ├── ✅ DISTRIBUTION-GUIDE.md             # Distribution guide
 ├── ✅ do-not-upload.md                  # This file - GitHub upload guide
-├── ❌ final_test.txt                    # Test log file
+├── ❌ ggml-base.bin                     # Whisper model binary (large file)
 ├── ❌ ggml-tiny.bin                     # Whisper model binary (large file)
 ├── ✅ GITHUB_FILE_STRUCTURE_GUIDE.md    # GitHub structure guide
 ├── ✅ index.html                        # Web interface
@@ -36,8 +33,6 @@ c:/Projects/carelesswhisperV4/Careless-Whisper-V3/
 ├── ✅ postcss.config.js                 # PostCSS configuration
 ├── ✅ Program.cs                        # Application entry point
 ├── ✅ README.md                         # Main documentation
-├── ❌ startup_log.txt                   # Startup log file
-├── ❌ startup_test2.txt                 # Test log file
 ├── ✅ tailwind.config.js                # Tailwind CSS configuration
 ├── ✅ test-transformers.html            # Test HTML file
 ├── ✅ test-whisper.js                   # Test JavaScript file
@@ -45,12 +40,6 @@ c:/Projects/carelesswhisperV4/Careless-Whisper-V3/
 ├── ✅ TestTranscriptionLogger.cs        # Test source code
 ├── ✅ tsconfig.json                     # TypeScript configuration
 ├── ✅ tsconfig.node.json                # TypeScript Node configuration
-├── ❌ v1_6_0_final.txt                  # Version log file
-├── ❌ v1_6_0_final2.txt                 # Version log file
-├── ❌ v1_6_0_final3.txt                 # Version log file
-├── ❌ v1_6_0_logs.txt                   # Version log file
-├── ❌ v1_6_0_test.txt                   # Version test file
-├── ❌ v3_6_0_test.txt                   # Version test file
 └── ✅ vite.config.ts                    # Vite configuration
 ```
 
@@ -58,7 +47,15 @@ c:/Projects/carelesswhisperV4/Careless-Whisper-V3/
 
 ```
 ├── ❌ bin/                              # Entire build output directory
-│   └── ❌ Debug/                        # Debug build artifacts
+│   ├── ❌ Debug/                        # Debug build artifacts
+│   │   └── ❌ net8.0-windows/           # Framework-specific builds
+│   │       └── ❌ win-x64/              # Platform-specific builds
+│   │           ├── ❌ *.dll             # Dynamic link libraries
+│   │           ├── ❌ *.exe             # Executable files
+│   │           ├── ❌ *.pdb             # Debug symbols
+│   │           ├── ❌ *.json            # Runtime configuration
+│   │           └── ❌ **/               # All subdirectories
+│   └── ❌ Release/                      # Release build artifacts (v3.6.2)
 │       └── ❌ net8.0-windows/           # Framework-specific builds
 │           └── ❌ win-x64/              # Platform-specific builds
 │               ├── ❌ *.dll             # Dynamic link libraries
@@ -76,7 +73,14 @@ c:/Projects/carelesswhisperV4/Careless-Whisper-V3/
 │   ├── ❌ *.props                       # Build properties
 │   ├── ❌ *.targets                     # Build targets
 │   ├── ❌ *.cache                       # Build cache files
-│   └── ❌ Debug/                        # Debug cache
+│   ├── ❌ Debug/                        # Debug cache
+│   │   └── ❌ net8.0-windows/           # Framework cache
+│   │       └── ❌ win-x64/              # Platform cache
+│   │           ├── ❌ *.cs              # Generated source files
+│   │           ├── ❌ *.cache           # Assembly cache
+│   │           ├── ❌ *.editorconfig    # Generated config
+│   │           └── ❌ ref/              # Reference assemblies
+│   └── ❌ Release/                      # Release cache (v3.6.2)
 │       └── ❌ net8.0-windows/           # Framework cache
 │           └── ❌ win-x64/              # Platform cache
 │               ├── ❌ *.cs              # Generated source files
@@ -270,7 +274,7 @@ Add these to your `.gitignore` file:
 bin/
 obj/
 
-# Distribution output (3.6.1 release artifacts)
+# Distribution output (v3.6.2 release artifacts)
 dist-framework-dependent/
 dist-standalone/
 *.zip
@@ -323,18 +327,19 @@ Thumbs.db
 - Web assets and configurations
 - UI definitions
 
-**Total Files to Exclude: ~120+ build artifacts, distributions, and logs**
-- Entire `bin/` and `obj/` directories
+**Total Files to Exclude: ~140+ build artifacts, distributions, and logs**
+- Entire `bin/` and `obj/` directories (including Release builds)
 - Distribution directories (`dist-framework-dependent/`, `dist-standalone/`)
-- Release packages (v3.6.0 and v3.6.1 .zip files)
-- All test log files
-- Large binary model files
+- Release packages (v3.6.2 .zip files)
+- Large binary model files (ggml-base.bin, ggml-tiny.bin)
 - IDE-specific cache files
 
-**Post-3.6.1 Release Updates:**
-- ❌ 4 release packages (.zip files) - These are distribution artifacts, not source code
-- ❌ 2 distribution directories with ~30+ compiled files each
+**Post-v3.6.2 Release Updates:**
+- ❌ 1 release package (Careless-Whisper-v3.6.2-portable-lite.zip) - Distribution artifact
+- ❌ Updated distribution directory with v3.6.2 framework-dependent build (~50+ compiled files)
+- ❌ New Release build directories in bin/ and obj/ with v3.6.2 artifacts
+- ❌ Additional Whisper model binary (ggml-base.bin) - Large file requiring Git LFS
 - ✅ 2 build scripts for automated release generation
-- ✅ Updated file structure guide
+- ✅ Updated file structure guide reflecting current v3.6.2 state
 
-This ensures a clean repository with only essential source code and documentation while excluding build artifacts, release packages, logs, and large binary files that were generated during the 3.6.1 distribution process.
+This ensures a clean repository with only essential source code and documentation while excluding build artifacts, release packages, logs, and large binary files that were generated during the v3.6.2 distribution process.

@@ -63,6 +63,10 @@ public class Program
             WriteDebugLine("DI TEST: Configuring logging...", shouldShowDebug && consoleAllocated);
             builder.Logging.AddConsole();
             builder.Logging.AddDebug();
+            
+            // Add file logging for debugging
+            builder.Logging.Services.AddSingleton<ILoggerProvider, CarelessWhisperV2.Services.Logging.FileLoggerProvider>();
+            
             builder.Logging.SetMinimumLevel(LogLevel.Debug);
             
             WriteDebugLine("STARTUP: Registering all services for Careless Whisper V3...", shouldShowDebug && consoleAllocated);

@@ -92,11 +92,11 @@ public partial class MainWindow : Window
                     var statusText = FindName("StatusText") as TextBlock;
                     if (statusText != null)
                     {
-                        statusText.Text = "Ready - F1 to record";
+                        statusText.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt";
                     }
                 });
-                _logger.LogInformation("Orchestrator ready - F1 to record");
-                WriteDebugLine("STARTUP: Orchestrator ready - F1 to record");
+                _logger.LogInformation("Orchestrator ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt");
+                WriteDebugLine("STARTUP: Orchestrator ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt");
             }
             catch (Exception orchEx)
             {
@@ -153,7 +153,7 @@ public partial class MainWindow : Window
                     var statusTextInner = FindName("StatusText") as TextBlock;
                     if (statusTextInner != null)
                     {
-                        statusTextInner.Text = "Ready - F1 to record";
+                        statusTextInner.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt";
                     }
                 };
                 timer.Start();
@@ -184,7 +184,7 @@ public partial class MainWindow : Window
                     var statusTextInner = FindName("StatusText") as TextBlock;
                     if (statusTextInner != null)
                     {
-                        statusTextInner.Text = "Ready - F1 to record";
+                        statusTextInner.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt";
                     }
                 };
                 timer.Start();
