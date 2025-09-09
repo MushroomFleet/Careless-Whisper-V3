@@ -28,10 +28,12 @@ Extract, double-click, and start speaking! The app lives silently in your system
 
 ## ✨ Core Features
 
-### 🎙️ Triple Hotkey System
+### 🎙️ Quintuple Hotkey System
 - **F1**: **Speech-to-Text** → Hold, speak, release → Instant paste
 - **Shift+F2**: **Speech-Prompt-to-AI** → Voice your question → Get AI response pasted
 - **Ctrl+F2**: **Speech Copy Prompt to Paste** → Combines clipboard content with voice prompt → AI processes both together
+- **Shift+F3**: **Vision Capture** → Select screen area → AI describes image → Instant paste
+- **Ctrl+F3**: **Speech + Vision** → Hold, speak, release → Select screen area → AI analyzes both → Paste result
 
 ### 📝 Speech Copy Prompt to Paste (NEW in v3.6.2)
 - **Intelligent Clipboard Integration**: Automatically captures existing clipboard content when Ctrl+F2 is pressed
@@ -39,6 +41,15 @@ Extract, double-click, and start speaking! The app lives silently in your system
 - **Seamless Workflow**: Copy any text → Hold Ctrl+F2 → Speak your instruction → Get enhanced AI response
 - **Universal Compatibility**: Works with both OpenRouter (300+ cloud models) and Ollama (local models)
 - **Context-Aware Processing**: AI receives both inputs for more informed and relevant responses
+
+### 👁️ AI Vision Analysis (NEW in v3.6.3)
+- **Drag-to-Select Interface**: Visual overlay with animated selection rectangle for precise screen capture
+- **Dual Vision Modes**: Quick capture (Shift+F3) or combined speech+vision analysis (Ctrl+F3)
+- **Multi-Monitor Support**: Works seamlessly across different screen setups and DPI configurations
+- **Smart Image Processing**: Automatic optimization for vision APIs (token-aware resizing, format detection)
+- **Vision Model Integration**: Uses your selected LLM provider's vision models (Claude 3, GPT-4 Vision, LLaVA, etc.)
+- **Customizable Prompts**: Configure default analysis behavior or use preset prompts for common tasks
+- **Fast Capture Performance**: ~30ms screen capture using optimized BitBlt API
 
 ### 🤖 Dual AI Integration - Local & Cloud
 - **OpenRouter API**: Access to **300+ cutting-edge cloud models** (GPT-4, Claude, Gemini, etc.)
@@ -152,6 +163,13 @@ Right-click the system tray icon to access comprehensive settings:
 - **Export Options**: Save transcriptions to files
 - **Privacy Controls**: Clear history or disable logging
 
+### Vision (V3.6.3)
+- **System Prompt Customization**: Configure default analysis behavior for Shift+F3
+- **Prompt Presets**: Quick-select common scenarios (OCR, detailed analysis, accessibility, UI description)
+- **Image Processing Settings**: Adjust quality vs. speed balance and token optimization
+- **Vision Model Compatibility**: Real-time validation of selected model's vision capabilities
+- **Test Integration**: Built-in test functionality to verify screen capture and AI analysis
+
 ## 🔧 Technical Details
 
 ### Architecture
@@ -216,24 +234,33 @@ Requires .NET 8.0 SDK for development.
 
 ## 📝 Status
 
-**Current Version**: **3.6.2** - Latest stable release
+**Current Version**: **3.6.3** - Latest stable release with Vision Analysis
 
 ✅ **Working**: 
-- Triple-mode speech processing (local + AI + clipboard integration)
-- Complete settings UI with all configuration options
-- Secure OpenRouter integration with **300+ models**
+- **Quintuple-mode processing** (local speech + AI + clipboard + vision integration)
+- **AI Vision Analysis** with drag-to-select screen capture and intelligent image processing
+- Complete settings UI with Vision configuration tab
+- Secure OpenRouter integration with **300+ models** including vision models
 - **Ollama local AI integration** with full API support
 - **Speech Copy Prompt to Paste** feature with clipboard integration
 - Custom audio notification system
 - **Revived transcription history** with search and management
 - Enhanced transcription with multiple Whisper models
 
+🎯 **V3.6.3 Achievements**:
+- **AI Vision Analysis**: Revolutionary Shift+F3 and Ctrl+F3 hotkeys for screen capture and image analysis
+- **Drag-to-Select Interface**: Professional overlay system with visual feedback and multi-monitor support
+- **Speech + Vision Fusion**: Ctrl+F3 combines voice transcription with image analysis for comprehensive understanding
+- **Vision Model Integration**: Seamless compatibility with Claude 3, GPT-4 Vision, LLaVA, and other vision models
+- **Smart Image Processing**: Token-aware optimization and format detection for maximum API efficiency
+- **Customizable Vision Prompts**: Full user control over analysis behavior with preset options
+- **Fast Performance**: ~30ms screen capture with optimized BitBlt implementation
+
 🎯 **V3.6.2 Achievements**:
-- **Speech Copy Prompt to Paste**: New Ctrl+F2 hotkey combining clipboard content with voice prompts
+- **Speech Copy Prompt to Paste**: Ctrl+F2 hotkey combining clipboard content with voice prompts
 - **Intelligent Clipboard Integration**: Seamless workflow bridging copy-paste with AI assistance
-- **Triple Hotkey System**: F1 for transcription, Shift+F2 for AI assistance, Ctrl+F2 for clipboard+voice
 - **Context-Aware AI Processing**: Enhanced prompts using both voice and clipboard content
-- **Universal Provider Support**: Ctrl+F2 works with both OpenRouter and Ollama models
+- **Universal Provider Support**: Works with both OpenRouter and Ollama models
 - **Dual AI Provider System**: OpenRouter (cloud) + Ollama (local) integration
 - **Enhanced Privacy Options**: Choose between cloud and local AI processing
 - **300+ OpenRouter Models**: Massive selection of cutting-edge LLMs
@@ -267,6 +294,52 @@ Requires .NET 8.0 SDK for development.
 - **Copy meeting notes** → **Ctrl+F2**: "Create action items from these notes"
 - **Copy technical documentation** → **Ctrl+F2**: "Simplify this for a non-technical audience"
 - **Copy product description** → **Ctrl+F2**: "Write marketing copy based on these features"
+
+### Vision Capture (Shift+F3) Examples
+- **Quick Description**: Capture any screen area for instant AI description
+- **Error Analysis**: Select error dialogs to get explanations and solutions  
+- **UI Documentation**: Capture interface elements for accessibility descriptions
+- **Chart Reading**: Select graphs/charts for data interpretation
+- **OCR Alternative**: Capture text in images for extraction and analysis
+- **Design Feedback**: Select UI mockups for usability analysis
+- **Technical Diagrams**: Capture system architectures for explanations
+
+### Speech + Vision (Ctrl+F3) Examples  
+- **Hold Ctrl+F3**: "What programming language is this?" → **Release** → **Drag** code area → Get language identification and code explanation
+- **Hold Ctrl+F3**: "How do I improve this chart?" → **Release** → **Drag** chart → Get data visualization suggestions
+- **Hold Ctrl+F3**: "What's wrong with this error?" → **Release** → **Drag** error dialog → Get troubleshooting steps
+- **Hold Ctrl+F3**: "Explain this diagram to a beginner" → **Release** → **Drag** technical diagram → Get simplified explanation
+- **Hold Ctrl+F3**: "What accessibility issues are here?" → **Release** → **Drag** UI area → Get accessibility audit
+- **Hold Ctrl+F3**: "Convert this to markdown" → **Release** → **Drag** formatted text → Get markdown conversion
+- **Hold Ctrl+F3**: "What's the sentiment of this content?" → **Release** → **Drag** social media post → Get sentiment analysis
+
+## 📋 Step-by-Step Workflow Guides
+
+### Quick Vision Analysis (Shift+F3)
+1. **Press Shift+F3** - Overlay appears with crosshair cursor
+2. **Drag to select** - Draw rectangle around area of interest  
+3. **AI analyzes** - Image sent to your configured vision model
+4. **Result ready** - Description automatically copied to clipboard
+5. **Paste anywhere** - Ctrl+V to use the analysis
+
+*Perfect for: Screenshots, UI elements, error dialogs, charts, diagrams*
+
+### Combined Speech + Vision (Ctrl+F3)
+1. **Hold Ctrl+F3** - Recording starts (speak your question/instruction)
+2. **Release Ctrl+F3** - Speech transcription begins
+3. **Overlay appears** - Drag to select screen area for analysis  
+4. **AI processes both** - Speech transcription + image sent to vision model
+5. **Combined result** - Enhanced analysis based on both inputs copied to clipboard
+6. **Paste anywhere** - Ctrl+V to use the comprehensive analysis
+
+*Perfect for: Complex analysis, specific questions about visual content, contextual understanding*
+
+### Vision Settings Configuration
+1. **Right-click tray icon** → **Settings** → **Vision tab**
+2. **Customize system prompt** - Default: "Describe the image in a single line paragraph"
+3. **Choose from presets** - Quick prompts for common scenarios (OCR, detailed analysis, accessibility, etc.)
+4. **Adjust image quality** - Balance between speed and vision model accuracy
+5. **Test functionality** - Built-in test button to verify vision capture works
 
 ## 🤝 Contributing
 

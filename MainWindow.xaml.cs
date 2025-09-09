@@ -92,7 +92,7 @@ public partial class MainWindow : Window
                     var statusText = FindName("StatusText") as TextBlock;
                     if (statusText != null)
                     {
-                        statusText.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt";
+                        statusText.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt";
                     }
                 });
                 _logger.LogInformation("Orchestrator ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt");
@@ -153,7 +153,7 @@ public partial class MainWindow : Window
                     var statusTextInner = FindName("StatusText") as TextBlock;
                     if (statusTextInner != null)
                     {
-                        statusTextInner.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt";
+                        statusTextInner.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt";
                     }
                 };
                 timer.Start();
@@ -184,7 +184,7 @@ public partial class MainWindow : Window
                     var statusTextInner = FindName("StatusText") as TextBlock;
                     if (statusTextInner != null)
                     {
-                        statusTextInner.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt";
+                        statusTextInner.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt";
                     }
                 };
                 timer.Start();
@@ -221,6 +221,12 @@ public partial class MainWindow : Window
     private void StartTest_Click(object sender, RoutedEventArgs e)
     {
         MessageBox.Show("Press and hold F1 to test recording functionality", "Test Recording", 
+            MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void TestVision_Click(object sender, RoutedEventArgs e)
+    {
+        MessageBox.Show("Vision Capture:\n\nShift+F3: Capture screen area and analyze with AI\nCtrl+F3: Capture screen area with custom prompt\n\nResults will be copied to clipboard automatically.", "Test Vision Capture", 
             MessageBoxButton.OK, MessageBoxImage.Information);
     }
 

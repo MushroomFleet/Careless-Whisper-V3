@@ -89,6 +89,12 @@ public class Program
             builder.Services.AddSingleton<IOllamaService, OllamaService>();
             builder.Services.AddSingleton<IAudioNotificationService, AudioNotificationService>();
             
+            // V3.6.3 Vision services
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.ScreenCapture.IScreenCaptureService, CarelessWhisperV2.Services.ScreenCapture.BitBltScreenCaptureService>();
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.ScreenCapture.ICaptureOverlayService, CarelessWhisperV2.Services.ScreenCapture.CaptureOverlayService>();
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.Vision.IImageProcessingService, CarelessWhisperV2.Services.Vision.ImageProcessingService>();
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.Vision.IVisionProcessingService, CarelessWhisperV2.Services.Vision.VisionProcessingService>();
+            
             // Application services
             builder.Services.AddSingleton<PushToTalkManager>();
             builder.Services.AddSingleton<TranscriptionOrchestrator>();
