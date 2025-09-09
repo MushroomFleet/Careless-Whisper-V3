@@ -2,9 +2,9 @@
 
 **"Care Less" - Inobtrusive Augments!**
 
-**Dual-Mode Voice-to-Text & AI Assistant for Windows** • Silent system tray interface • Built with .NET 8.0
+**Triple-Mode Voice-to-Text & AI Assistant for Windows** • Silent system tray interface • Built with .NET 8.0
 
-Transform your voice into text instantly OR get AI-powered responses with simple hotkeys. No windows, no interruptions—just speak and get results anywhere.
+Transform your voice into text instantly, get AI-powered responses, or combine clipboard content with voice prompts—all with simple hotkeys. No windows, no interruptions—just speak and get results anywhere.
 
 **4/9/25:** [Careless-Canvas-NML](https://github.com/MushroomFleet/Careless-Canvas-NML)
 - Specially designed infinite canvas for your pastes 
@@ -14,7 +14,7 @@ Transform your voice into text instantly OR get AI-powered responses with simple
 
 **Ready to boost your productivity?** 
 
-👉 **[Download Latest Portable Release (v3.6.1)](../../releases/latest)**
+👉 **[Download Latest Portable Release (v3.6.2)](../../releases/latest)**
 
 **What you get:**
 - ⚡ **Instant Setup** - Single portable executable, no installer needed
@@ -28,9 +28,17 @@ Extract, double-click, and start speaking! The app lives silently in your system
 
 ## ✨ Core Features
 
-### 🎙️ Dual Hotkey System
+### 🎙️ Triple Hotkey System
 - **F1**: **Speech-to-Text** → Hold, speak, release → Instant paste
 - **Shift+F2**: **Speech-Prompt-to-AI** → Voice your question → Get AI response pasted
+- **Ctrl+F2**: **Speech Copy Prompt to Paste** → Combines clipboard content with voice prompt → AI processes both together
+
+### 📝 Speech Copy Prompt to Paste (NEW in v3.6.2)
+- **Intelligent Clipboard Integration**: Automatically captures existing clipboard content when Ctrl+F2 is pressed
+- **Dual Input Processing**: Combines your voice transcription with clipboard text using template: `"[speech-transcription], [copy-buffer text]"`
+- **Seamless Workflow**: Copy any text → Hold Ctrl+F2 → Speak your instruction → Get enhanced AI response
+- **Universal Compatibility**: Works with both OpenRouter (300+ cloud models) and Ollama (local models)
+- **Context-Aware Processing**: AI receives both inputs for more informed and relevant responses
 
 ### 🤖 Dual AI Integration - Local & Cloud
 - **OpenRouter API**: Access to **300+ cutting-edge cloud models** (GPT-4, Claude, Gemini, etc.)
@@ -76,6 +84,13 @@ Extract, double-click, and start speaking! The app lives silently in your system
 - **Creative**: Brainstorm ideas, get suggestions
 - **Productivity**: Quick calculations, translations, explanations
 
+### Speech Copy Prompt Integration (Ctrl+F2)
+- **Content Enhancement**: Copy text → Voice improvements → Get polished version
+- **Code Analysis**: Copy code snippets → Voice questions → Get explanations
+- **Document Processing**: Copy paragraphs → Voice instructions → Get summaries/translations
+- **Data Analysis**: Copy spreadsheet data → Voice queries → Get insights
+- **Email Assistance**: Copy draft emails → Voice refinements → Get professional versions
+
 ## 📋 Prerequisites
 
 ### Required
@@ -98,6 +113,7 @@ Right-click the system tray icon to access comprehensive settings:
 ### Hotkeys
 - Customize push-to-talk keys (default: F1)
 - Configure AI hotkey (default: Shift+F2)
+- Configure Speech Copy Prompt hotkey (default: Ctrl+F2)
 - Modifier key requirements
 
 ### Audio Settings
@@ -200,23 +216,26 @@ Requires .NET 8.0 SDK for development.
 
 ## 📝 Status
 
-**Current Version**: **3.6.0** - Latest stable release
+**Current Version**: **3.6.2** - Latest stable release
 
 ✅ **Working**: 
-- Dual-mode speech processing (local + AI)
+- Triple-mode speech processing (local + AI + clipboard integration)
 - Complete settings UI with all configuration options
 - Secure OpenRouter integration with **300+ models**
 - **Ollama local AI integration** with full API support
+- **Speech Copy Prompt to Paste** feature with clipboard integration
 - Custom audio notification system
 - **Revived transcription history** with search and management
 - Enhanced transcription with multiple Whisper models
 
-🎯 **V3.6.0 Achievements**:
+🎯 **V3.6.2 Achievements**:
+- **Speech Copy Prompt to Paste**: New Ctrl+F2 hotkey combining clipboard content with voice prompts
+- **Intelligent Clipboard Integration**: Seamless workflow bridging copy-paste with AI assistance
+- **Triple Hotkey System**: F1 for transcription, Shift+F2 for AI assistance, Ctrl+F2 for clipboard+voice
+- **Context-Aware AI Processing**: Enhanced prompts using both voice and clipboard content
+- **Universal Provider Support**: Ctrl+F2 works with both OpenRouter and Ollama models
 - **Dual AI Provider System**: OpenRouter (cloud) + Ollama (local) integration
 - **Enhanced Privacy Options**: Choose between cloud and local AI processing
-- **Fixed Ollama Issues**: Resolved JSON deserialization and model persistence
-- **Improved Transcription Logging**: All operations now properly logged
-- **Dual Hotkey System**: F1 for direct transcription, Shift+F2 for AI assistance
 - **300+ OpenRouter Models**: Massive selection of cutting-edge LLMs
 - **Local Model Support**: Llama, Mistral, Qwen, Code Llama, and custom models
 - **Enhanced Security**: Encrypted API key management
@@ -239,6 +258,16 @@ Requires .NET 8.0 SDK for development.
 - **F1**: Direct dictation for emails, documents, chat messages
 - **Shift+F2**: "Calculate 15% tip on $47.83" or "What's the capital of Slovenia?"
 
+### Speech Copy Prompt (Ctrl+F2) Examples
+- **Copy draft email** → **Ctrl+F2**: "Make this more professional and concise"
+- **Copy code snippet** → **Ctrl+F2**: "Explain what this function does and add comments"
+- **Copy paragraph** → **Ctrl+F2**: "Translate this to French and improve the clarity"
+- **Copy error message** → **Ctrl+F2**: "What does this error mean and how do I fix it?"
+- **Copy spreadsheet data** → **Ctrl+F2**: "Summarize the key trends in this data"
+- **Copy meeting notes** → **Ctrl+F2**: "Create action items from these notes"
+- **Copy technical documentation** → **Ctrl+F2**: "Simplify this for a non-technical audience"
+- **Copy product description** → **Ctrl+F2**: "Write marketing copy based on these features"
+
 ## 🤝 Contributing
 
 This project implements production-ready .NET 8.0 patterns with comprehensive V3.0 architecture. See [docs/devteam-handoff-v3-final.md](docs/devteam-handoff-v3-final.md) for complete technical documentation.
@@ -251,4 +280,4 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 
 **Made for developers, writers, and anyone who wants both instant transcription AND AI assistance at their fingertips.**
 
-*V3.6.0: Where voice meets intelligence - Care Less, Achieve More.*
+*V3.6.2: Where voice meets intelligence - Care Less, Achieve More.*
