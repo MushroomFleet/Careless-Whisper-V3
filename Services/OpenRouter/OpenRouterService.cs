@@ -284,6 +284,13 @@ public class OpenRouterService : IOpenRouterService, IDisposable
 
             _logger.LogInformation("Processing prompt with model: {Model}", model);
 
+            // Log the exact user message being sent to LLM
+            var userMessagePreview = userMessage.Length > 0 
+                ? userMessage.Substring(0, Math.Min(500, userMessage.Length))
+                : "[EMPTY]";
+            _logger.LogInformation("OPENROUTER PROMPT - UserMessage Length: {Length}, Preview: '{Preview}'", 
+                userMessage.Length, userMessagePreview);
+
             _httpClient.DefaultRequestHeaders.Authorization = 
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
 

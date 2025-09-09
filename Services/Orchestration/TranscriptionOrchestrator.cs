@@ -28,6 +28,7 @@ public class TranscriptionOrchestrator : IDisposable
     private readonly ILogger<TranscriptionOrchestrator> _logger;
     
     private string _currentRecordingPath = "";
+    private string _capturedClipboardContent = ""; // Store clipboard content for copy-prompt mode
     private bool _disposed;
     private ApplicationSettings _settings = new();
 
@@ -61,6 +62,8 @@ public class TranscriptionOrchestrator : IDisposable
         _hotkeyManager.TransmissionEnded += OnTransmissionEnded;
         _hotkeyManager.LlmTransmissionStarted += OnLlmTransmissionStarted; // NEW
         _hotkeyManager.LlmTransmissionEnded += OnLlmTransmissionEnded; // NEW
+        _hotkeyManager.CopyPromptTransmissionStarted += OnCopyPromptTransmissionStarted; // NEW for Ctrl+F2
+        _hotkeyManager.CopyPromptTransmissionEnded += OnCopyPromptTransmissionEnded; // NEW for Ctrl+F2
         
         // Load settings
         _ = Task.Run(LoadSettingsAsync);
@@ -209,6 +212,129 @@ public class TranscriptionOrchestrator : IDisposable
             {
                 Exception = ex,
                 Message = "Failed to stop LLM recording"
+            });
+        }
+    }
+
+    // NEW Copy-Prompt event handlers for Ctrl+F2
+    private async void OnCopyPromptTransmissionStarted()
+    {
+        try
+        {
+            // CAPTURE CLIPBOARD CONTENT FIRST - before anything else that might overwrite it!
+            _logger.LogInformation("CLIPBOARD DEBUG - Starting capture process. Thread: {ThreadId}, STA: {IsSTAThread}", 
+                System.Threading.Thread.CurrentThread.ManagedThreadId, 
+                System.Threading.Thread.CurrentThread.GetApartmentState() == System.Threading.ApartmentState.STA);
+            
+            try
+            {
+                // Capture clipboard content on the UI thread to ensure STA access
+                _capturedClipboardContent = "";
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        _logger.LogInformation("CLIPBOARD DEBUG - Now on UI thread: {ThreadId}, STA: {IsSTAThread}", 
+                            System.Threading.Thread.CurrentThread.ManagedThreadId, 
+                            System.Threading.Thread.CurrentThread.GetApartmentState() == System.Threading.ApartmentState.STA);
+                        
+                        // First check if clipboard contains text
+                        bool hasText = System.Windows.Clipboard.ContainsText();
+                        _logger.LogInformation("CLIPBOARD DEBUG - ContainsText result: {HasText}", hasText);
+                        
+                        if (!hasText)
+                        {
+                            _logger.LogWarning("CLIPBOARD DEBUG - Clipboard reports no text content available!");
+                            _capturedClipboardContent = "";
+                            return;
+                        }
+                        
+                        // Capture the clipboard content directly using WPF clipboard
+                        _capturedClipboardContent = System.Windows.Clipboard.GetText();
+                        
+                        var contentLength = _capturedClipboardContent?.Length ?? 0;
+                        var contentPreview = !string.IsNullOrWhiteSpace(_capturedClipboardContent) && _capturedClipboardContent.Length > 0 
+                            ? _capturedClipboardContent.Substring(0, Math.Min(200, _capturedClipboardContent.Length))
+                            : "[EMPTY]";
+                        
+                        _logger.LogInformation("CLIPBOARD CAPTURE - Length: {ContentLength}, Preview: '{ContentPreview}'", 
+                            contentLength, contentPreview);
+                        
+                        if (string.IsNullOrWhiteSpace(_capturedClipboardContent))
+                        {
+                            _logger.LogWarning("CLIPBOARD CAPTURE - WARNING: Captured clipboard content is empty or null!");
+                        }
+                        else
+                        {
+                            _logger.LogInformation("CLIPBOARD CAPTURE - SUCCESS: Captured {Length} characters on UI thread", 
+                                _capturedClipboardContent.Length);
+                        }
+                    }
+                    catch (Exception uiThreadEx)
+                    {
+                        _logger.LogError(uiThreadEx, "CLIPBOARD CAPTURE - UI thread access failed: {Error}", uiThreadEx.Message);
+                        _capturedClipboardContent = "";
+                    }
+                });
+            }
+            catch (Exception clipboardEx)
+            {
+                _logger.LogError(clipboardEx, "CLIPBOARD CAPTURE - Dispatcher invoke failed: {Error}", clipboardEx.Message);
+                _capturedClipboardContent = "";
+            }
+
+            // Now start recording
+            _currentRecordingPath = GenerateRecordingPath();
+            await _audioService.StartRecordingAsync(_currentRecordingPath);
+            _logger.LogInformation("Copy-prompt recording started: {Path}", _currentRecordingPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start copy-prompt recording");
+            // Clear captured content on error to prevent stale data
+            _capturedClipboardContent = "";
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = "Failed to start copy-prompt recording"
+            });
+        }
+    }
+
+    private async void OnCopyPromptTransmissionEnded()
+    {
+        try
+        {
+            await _audioService.StopRecordingAsync();
+            _logger.LogInformation("Copy-prompt recording stopped: {Path}", _currentRecordingPath);
+
+            // Wait for file to be fully released
+            await Task.Delay(1000);
+
+            if (File.Exists(_currentRecordingPath))
+            {
+                var fileInfo = new FileInfo(_currentRecordingPath);
+                _logger.LogInformation("Copy-prompt audio file created: {Path}, Size: {Size} bytes", _currentRecordingPath, fileInfo.Length);
+                
+                // Process copy-prompt transcription in background
+                _ = Task.Run(async () => await ProcessCopyPromptTranscriptionAsync(_currentRecordingPath));
+            }
+            else
+            {
+                _logger.LogWarning("Copy-prompt audio file not found after recording: {Path}", _currentRecordingPath);
+                TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+                {
+                    Message = "Copy-prompt audio file not found after recording"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stop copy-prompt recording");
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = "Failed to stop copy-prompt recording"
             });
         }
     }
@@ -536,6 +662,253 @@ public class TranscriptionOrchestrator : IDisposable
         }
     }
 
+    // NEW Copy-Prompt processing method for Ctrl+F2
+    private async Task ProcessCopyPromptTranscriptionAsync(string audioFilePath)
+    {
+        var startTime = DateTime.Now;
+        TranscriptionEntry? transcriptionEntry = null;
+        
+        try
+        {
+            _logger.LogInformation("Starting copy-prompt transcription: {Path}", audioFilePath);
+            
+            // First, transcribe the audio
+            var transcriptionResult = await _transcriptionService.TranscribeAsync(audioFilePath);
+            
+            if (string.IsNullOrWhiteSpace(transcriptionResult.FullText))
+            {
+                _logger.LogWarning("Copy-prompt transcription returned empty result");
+                TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+                {
+                    Message = "No speech detected in audio for copy-prompt processing"
+                });
+                return;
+            }
+
+            // Use the clipboard content we captured earlier when Ctrl+F2 was pressed
+            string clipboardContent = _capturedClipboardContent ?? "";
+            var clipboardPreview = !string.IsNullOrWhiteSpace(clipboardContent) && clipboardContent.Length > 0 
+                ? clipboardContent.Substring(0, Math.Min(200, clipboardContent.Length))
+                : "[EMPTY]";
+            
+            _logger.LogInformation("CLIPBOARD RETRIEVAL - Length: {ContentLength}, Preview: '{ClipboardPreview}'", 
+                clipboardContent.Length, clipboardPreview);
+
+            // Clear the captured content for next use
+            _capturedClipboardContent = "";
+
+            // Log speech transcription details
+            var speechPreview = transcriptionResult.FullText.Length > 0 
+                ? transcriptionResult.FullText.Substring(0, Math.Min(200, transcriptionResult.FullText.Length))
+                : "[EMPTY]";
+            _logger.LogInformation("SPEECH TRANSCRIPTION - Length: {SpeechLength}, Preview: '{SpeechPreview}'", 
+                transcriptionResult.FullText.Length, speechPreview);
+
+            // Create the combined prompt using the template: "{speech-transcription}, {copy-buffer text}"
+            string combinedPrompt;
+            if (!string.IsNullOrWhiteSpace(clipboardContent))
+            {
+                combinedPrompt = $"{transcriptionResult.FullText}, {clipboardContent}";
+                _logger.LogInformation("PROMPT COMBINATION - Speech({SpeechLength}) + Clipboard({ClipboardLength}) = Total({TotalLength})", 
+                    transcriptionResult.FullText.Length, clipboardContent.Length, combinedPrompt.Length);
+            }
+            else
+            {
+                combinedPrompt = transcriptionResult.FullText;
+                _logger.LogWarning("PROMPT COMBINATION - No clipboard content found, using speech transcription only");
+            }
+
+            // Log the complete combined prompt being sent to LLM
+            var combinedPreview = combinedPrompt.Length > 0 
+                ? combinedPrompt.Substring(0, Math.Min(500, combinedPrompt.Length))
+                : "[EMPTY]";
+            _logger.LogInformation("COMBINED PROMPT TO LLM - Length: {TotalLength}, Preview: '{CombinedPreview}'", 
+                combinedPrompt.Length, combinedPreview);
+
+            // Create base transcription entry - this will always be logged regardless of LLM success
+            transcriptionEntry = new TranscriptionEntry
+            {
+                Timestamp = startTime,
+                FullText = $"SPEECH: {transcriptionResult.FullText}\nCLIPBOARD: {clipboardContent}\nCOMBINED: {combinedPrompt}",
+                Segments = transcriptionResult.Segments,
+                Language = transcriptionResult.Language,
+                Duration = DateTime.Now - startTime,
+                ModelUsed = $"Whisper:{_settings.Whisper.ModelSize}",
+                AudioFilePath = _settings.Logging.SaveAudioFiles ? audioFilePath : null
+            };
+
+            // Process with selected LLM provider
+            string llmResponse = "";
+            string llmError = "";
+            
+            try
+            {
+                if (_settings.SelectedLlmProvider == LlmProvider.OpenRouter)
+                {
+                    if (await _openRouterService.IsConfiguredAsync())
+                    {
+                        llmResponse = await _openRouterService.ProcessPromptAsync(
+                            combinedPrompt,
+                            _settings.OpenRouter.SystemPrompt,
+                            _settings.OpenRouter.SelectedModel);
+                        transcriptionEntry.ModelUsed = $"Whisper:{_settings.Whisper.ModelSize} + OpenRouter:{_settings.OpenRouter.SelectedModel}";
+                    }
+                    else
+                    {
+                        llmError = "OpenRouter API not configured. Please check settings.";
+                        _logger.LogError("OpenRouter service not configured for copy-prompt processing");
+                    }
+                }
+                else if (_settings.SelectedLlmProvider == LlmProvider.Ollama)
+                {
+                    if (await _ollamaService.IsConfiguredAsync())
+                    {
+                        llmResponse = await _ollamaService.ProcessPromptAsync(
+                            combinedPrompt,
+                            _settings.Ollama.SystemPrompt,
+                            _settings.Ollama.SelectedModel);
+                        transcriptionEntry.ModelUsed = $"Whisper:{_settings.Whisper.ModelSize} + Ollama:{_settings.Ollama.SelectedModel}";
+                    }
+                    else
+                    {
+                        llmError = "Ollama server not configured or not running. Please check settings.";
+                        _logger.LogError("Ollama service not configured for copy-prompt processing");
+                    }
+                }
+            }
+            catch (Exception llmEx)
+            {
+                llmError = $"{_settings.SelectedLlmProvider} processing failed: {llmEx.Message}";
+                _logger.LogError(llmEx, "{Provider} copy-prompt processing failed: {Error}", _settings.SelectedLlmProvider, llmEx.Message);
+            }
+
+            // Update transcription entry based on LLM result
+            if (!string.IsNullOrWhiteSpace(llmResponse))
+            {
+                // LLM processing succeeded
+                transcriptionEntry.FullText += $"\n\nLLM RESPONSE: {llmResponse}";
+                transcriptionEntry.Duration = DateTime.Now - startTime;
+
+                // Copy LLM response to clipboard
+                try
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        System.Windows.Clipboard.SetText(llmResponse);
+                        _logger.LogInformation("Successfully copied copy-prompt LLM response to clipboard");
+                    });
+
+                    // Play audio notification after successful copy-prompt clipboard operation
+                    if (_settings.AudioNotification.EnableNotifications && 
+                        _settings.AudioNotification.PlayOnLlmResponse &&
+                        !string.IsNullOrWhiteSpace(_settings.AudioNotification.AudioFilePath))
+                    {
+                        try
+                        {
+                            _audioNotificationService.SetVolume(_settings.AudioNotification.Volume);
+                            await _audioNotificationService.PlayNotificationAsync(NotificationType.LlmResponse);
+                            _logger.LogDebug("Copy-prompt audio notification played successfully");
+                        }
+                        catch (Exception audioEx)
+                        {
+                            _logger.LogWarning(audioEx, "Failed to play copy-prompt audio notification: {Error}", audioEx.Message);
+                            // Don't throw - audio notification failure shouldn't break transcription
+                        }
+                    }
+
+                    _logger.LogInformation("Copy-prompt transcription completed with {Provider}: {Response}", 
+                        _settings.SelectedLlmProvider,
+                        llmResponse.Substring(0, Math.Min(100, llmResponse.Length)));
+
+                    TranscriptionCompleted?.Invoke(this, new TranscriptionCompletedEventArgs
+                    {
+                        TranscriptionResult = new TranscriptionResult 
+                        { 
+                            FullText = llmResponse,
+                            Language = transcriptionResult.Language,
+                            Segments = transcriptionResult.Segments
+                        },
+                        ProcessingTime = DateTime.Now - startTime
+                    });
+                }
+                catch (Exception clipboardEx)
+                {
+                    _logger.LogError(clipboardEx, "Failed to copy copy-prompt LLM response to clipboard: {Error}", clipboardEx.Message);
+                    // Add error to transcription entry but still log it
+                    transcriptionEntry.FullText += $"\n\nCLIPBOARD ERROR: {clipboardEx.Message}";
+                }
+            }
+            else
+            {
+                // LLM processing failed or returned empty - still log the original transcription with error info
+                if (!string.IsNullOrWhiteSpace(llmError))
+                {
+                    transcriptionEntry.FullText += $"\n\nLLM ERROR: {llmError}";
+                }
+                
+                transcriptionEntry.Duration = DateTime.Now - startTime;
+
+                _logger.LogWarning("{Provider} copy-prompt returned empty response or failed: {Error}", _settings.SelectedLlmProvider, llmError);
+                TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+                {
+                    Message = !string.IsNullOrWhiteSpace(llmError) ? llmError : $"{_settings.SelectedLlmProvider} copy-prompt processing returned empty response"
+                });
+            }
+
+            // Always log the transcription entry if logging is enabled, regardless of LLM success/failure
+            if (_settings.Logging.EnableTranscriptionLogging && transcriptionEntry != null)
+            {
+                await _transcriptionLogger.LogTranscriptionAsync(transcriptionEntry);
+                _logger.LogDebug("Copy-prompt transcription entry logged to history: {Provider}", _settings.SelectedLlmProvider);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Copy-prompt transcription processing failed: {Path}. Error: {ErrorMessage}", audioFilePath, ex.Message);
+            
+            // Even on complete failure, try to log what we have if transcriptionEntry was created
+            if (_settings.Logging.EnableTranscriptionLogging && transcriptionEntry != null)
+            {
+                transcriptionEntry.FullText += $"\n\nPROCESSING ERROR: {ex.Message}";
+                transcriptionEntry.Duration = DateTime.Now - startTime;
+                try
+                {
+                    await _transcriptionLogger.LogTranscriptionAsync(transcriptionEntry);
+                    _logger.LogDebug("Error copy-prompt transcription entry logged to history");
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log error copy-prompt transcription entry");
+                }
+            }
+            
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = $"Copy-prompt processing failed: {ex.Message}"
+            });
+        }
+        finally
+        {
+            // Clean up temporary audio file (unless settings say to keep it)
+            if (!_settings.Logging.SaveAudioFiles)
+            {
+                try
+                {
+                    if (File.Exists(audioFilePath))
+                    {
+                        File.Delete(audioFilePath);
+                        _logger.LogDebug("Deleted temporary copy-prompt audio file: {Path}", audioFilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete temporary copy-prompt file: {Path}", audioFilePath);
+                }
+            }
+        }
+    }
+
     private string GenerateRecordingPath()
     {
         var tempPath = Path.GetTempPath();
@@ -576,6 +949,10 @@ public class TranscriptionOrchestrator : IDisposable
             _hotkeyManager?.Dispose();
             _audioService?.Dispose();
             _transcriptionService?.Dispose();
+            
+            // Clear any captured clipboard content
+            _capturedClipboardContent = "";
+            
             _disposed = true;
             _logger.LogInformation("TranscriptionOrchestrator disposed");
         }

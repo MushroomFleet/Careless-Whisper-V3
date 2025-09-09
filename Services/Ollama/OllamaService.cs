@@ -315,10 +315,24 @@ public class OllamaService : IOllamaService, IDisposable
 
             _logger.LogInformation("Processing prompt with Ollama model: {Model}", model);
 
+            // Log the exact user message being sent to LLM
+            var userMessagePreview = userMessage.Length > 0 
+                ? userMessage.Substring(0, Math.Min(500, userMessage.Length))
+                : "[EMPTY]";
+            _logger.LogInformation("OLLAMA PROMPT - UserMessage Length: {Length}, Preview: '{Preview}'", 
+                userMessage.Length, userMessagePreview);
+
+            var fullPrompt = $"{systemPrompt}\n\nUser: {userMessage}\n\nAssistant:";
+            var fullPromptPreview = fullPrompt.Length > 0 
+                ? fullPrompt.Substring(0, Math.Min(500, fullPrompt.Length))
+                : "[EMPTY]";
+            _logger.LogInformation("OLLAMA FULL PROMPT - Length: {Length}, Preview: '{Preview}'", 
+                fullPrompt.Length, fullPromptPreview);
+
             var requestBody = new
             {
                 model = model,
-                prompt = $"{systemPrompt}\n\nUser: {userMessage}\n\nAssistant:",
+                prompt = fullPrompt,
                 options = new
                 {
                     temperature = settings.Ollama.Temperature,

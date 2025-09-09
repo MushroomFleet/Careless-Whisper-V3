@@ -13,6 +13,7 @@ public class PushToTalkManager : IDisposable
     private readonly ILogger<PushToTalkManager> _logger;
     private bool _isTransmitting;
     private bool _isLlmMode; // NEW
+    private bool _isCopyPromptMode; // NEW for Ctrl+F2
     private readonly object _transmissionLock = new object();
     private int _hookRestartCount;
     private const int MaxRestartAttempts = 3;
@@ -22,6 +23,8 @@ public class PushToTalkManager : IDisposable
     public event Action? TransmissionEnded;
     public event Action? LlmTransmissionStarted; // NEW
     public event Action? LlmTransmissionEnded; // NEW
+    public event Action? CopyPromptTransmissionStarted; // NEW for Ctrl+F2
+    public event Action? CopyPromptTransmissionEnded; // NEW for Ctrl+F2
 
     public PushToTalkManager(
         ILogger<PushToTalkManager> logger, 
@@ -72,6 +75,7 @@ public class PushToTalkManager : IDisposable
                 {
                     _isTransmitting = true;
                     _isLlmMode = false;
+                    _isCopyPromptMode = false;
                     _logger.LogDebug("Push-to-talk started (Speech to Paste)");
                     TransmissionStarted?.Invoke();
                 }
@@ -87,8 +91,25 @@ public class PushToTalkManager : IDisposable
                 {
                     _isTransmitting = true;
                     _isLlmMode = true;
+                    _isCopyPromptMode = false;
                     _logger.LogDebug("LLM transmission started (Speech-Prompt to Paste)");
                     LlmTransmissionStarted?.Invoke();
+                }
+            }
+            e.SuppressEvent = true;
+        }
+        // Handle Ctrl+F2 (Speech Copy Prompt to Paste)
+        else if (e.Data.KeyCode == _llmPromptKey && _activeModifiers.Contains(KeyCode.VcLeftControl))
+        {
+            lock (_transmissionLock)
+            {
+                if (!_isTransmitting)
+                {
+                    _isTransmitting = true;
+                    _isLlmMode = false;
+                    _isCopyPromptMode = true;
+                    _logger.LogDebug("Copy-prompt transmission started (Speech Copy Prompt to Paste)");
+                    CopyPromptTransmissionStarted?.Invoke();
                 }
             }
             e.SuppressEvent = true;
@@ -104,9 +125,10 @@ public class PushToTalkManager : IDisposable
             return;
         }
 
-        // Handle key release for both modes
-        if ((e.Data.KeyCode == _pushToTalkKey && !_isLlmMode) || 
-            (e.Data.KeyCode == _llmPromptKey && _isLlmMode))
+        // Handle key release for all modes
+        if ((e.Data.KeyCode == _pushToTalkKey && !_isLlmMode && !_isCopyPromptMode) || 
+            (e.Data.KeyCode == _llmPromptKey && _isLlmMode) ||
+            (e.Data.KeyCode == _llmPromptKey && _isCopyPromptMode))
         {
             lock (_transmissionLock)
             {
@@ -118,6 +140,11 @@ public class PushToTalkManager : IDisposable
                     {
                         _logger.LogDebug("LLM transmission ended");
                         LlmTransmissionEnded?.Invoke();
+                    }
+                    else if (_isCopyPromptMode)
+                    {
+                        _logger.LogDebug("Copy-prompt transmission ended");
+                        CopyPromptTransmissionEnded?.Invoke();
                     }
                     else
                     {
@@ -158,6 +185,17 @@ public class PushToTalkManager : IDisposable
             lock (_transmissionLock)
             {
                 return _isLlmMode;
+            }
+        }
+    }
+
+    public bool IsCopyPromptMode // NEW for Ctrl+F2
+    {
+        get
+        {
+            lock (_transmissionLock)
+            {
+                return _isCopyPromptMode;
             }
         }
     }
