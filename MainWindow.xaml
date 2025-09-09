@@ -14,6 +14,7 @@
             <MenuItem Header="Settings" Click="Settings_Click"/>
             <Separator/>
             <MenuItem Header="Start Recording Test" Click="StartTest_Click"/>
+            <MenuItem Header="Test Vision Capture" Click="TestVision_Click"/>
             <MenuItem Header="View Transcription History" Click="ViewHistory_Click"/>
             <Separator/>
             <MenuItem Header="Exit" Click="Exit_Click"/>

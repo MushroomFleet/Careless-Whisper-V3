@@ -495,6 +495,197 @@ public class OpenRouterService : IOpenRouterService, IDisposable
         }
     }
 
+    public async Task<string> ProcessVisionPromptAsync(string userMessage, string base64Image, string systemPrompt, string model)
+    {
+        try
+        {
+            var apiKey = await _environmentService.GetApiKeyAsync();
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("OpenRouter API key not configured");
+
+            // Validate model parameter
+            if (string.IsNullOrWhiteSpace(model))
+            {
+                _logger.LogWarning("Model parameter is empty, using fallback vision model");
+                model = "meta-llama/llama-3.2-11b-vision-instruct:free";
+            }
+
+            _logger.LogInformation("Processing vision prompt with model: {Model}", model);
+
+            _httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+
+            var contentList = new List<object>
+            {
+                new { type = "text", text = userMessage }
+            };
+
+            // Add image if provided
+            if (!string.IsNullOrEmpty(base64Image))
+            {
+                contentList.Add(new { 
+                    type = "image_url", 
+                    image_url = new { url = base64Image } 
+                });
+            }
+
+            var content = contentList.ToArray();
+
+            var requestBody = new
+            {
+                model = model,
+                messages = new object[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = content }
+                },
+                temperature = 0.7,
+                max_tokens = 1500,
+                stream = false
+            };
+
+            var jsonContent = JsonSerializer.Serialize(requestBody);
+            var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            _logger.LogDebug("Sending vision request to OpenRouter API with model: {Model}", model);
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/chat/completions", httpContent);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("OpenRouter vision API request failed. Status: {StatusCode}, Content: {ErrorContent}", 
+                    response.StatusCode, errorContent);
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    throw new UnauthorizedAccessException("Invalid API key or insufficient permissions");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                {
+                    throw new ArgumentException($"Invalid vision model or request parameters. Model: {model}");
+                }
+                
+                response.EnsureSuccessStatusCode();
+            }
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            _logger.LogDebug("Received vision response from OpenRouter API: {ResponseLength} characters", responseJson.Length);
+            
+            var completion = JsonSerializer.Deserialize<ChatCompletionResponse>(responseJson, new JsonSerializerOptions 
+            { 
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+            });
+
+            var result = completion?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
+            
+            if (string.IsNullOrWhiteSpace(result))
+            {
+                _logger.LogWarning("OpenRouter returned empty vision response for model: {Model}", model);
+                throw new InvalidOperationException("OpenRouter returned empty vision response");
+            }
+
+            _logger.LogInformation("Successfully processed vision prompt with model: {Model}, Response length: {Length}", 
+                model, result.Length);
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process vision prompt with OpenRouter. Model: {Model}, Error: {Error}", 
+                model, ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<List<OpenRouterModel>> GetAvailableVisionModelsAsync(bool forceRefresh = false)
+    {
+        try
+        {
+            var allModels = await GetAvailableModelsAsync(forceRefresh);
+            
+            // Filter to vision-capable models
+            var visionModels = allModels.Where(m => IsVisionModelById(m.Id)).ToList();
+            
+            _logger.LogInformation("Found {Count} vision-capable models out of {TotalCount} total models", 
+                visionModels.Count, allModels.Count);
+            
+            return visionModels;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get available vision models");
+            
+            // Return fallback vision models
+            return GetFallbackVisionModels();
+        }
+    }
+
+    public async Task<bool> IsVisionModelAsync(string modelId)
+    {
+        return await Task.FromResult(IsVisionModelById(modelId));
+    }
+
+    private bool IsVisionModelById(string modelId)
+    {
+        if (string.IsNullOrEmpty(modelId)) return false;
+        
+        // Known vision model patterns for OpenRouter
+        var visionModelPatterns = new[]
+        {
+            "llama-3.2-11b-vision",
+            "llama-3.2-90b-vision", 
+            "gpt-4-vision",
+            "gpt-4o",
+            "gpt-4-turbo-vision",
+            "claude-3",
+            "claude-sonnet",
+            "claude-opus", 
+            "claude-haiku",
+            "gemini-flash",
+            "gemini-pro-vision",
+            "gemini-2.0-flash",
+            "qwen2.5-vl",
+            "qwen2-vl",
+            "pixtral",
+            "llava",
+            "vision"
+        };
+        
+        var lowerModelId = modelId.ToLowerInvariant();
+        bool isVisionModel = visionModelPatterns.Any(pattern => lowerModelId.Contains(pattern));
+        
+        _logger.LogDebug("Vision model check for '{ModelId}': {IsVisionModel}", modelId, isVisionModel);
+        
+        return isVisionModel;
+    }
+
+    private List<OpenRouterModel> GetFallbackVisionModels()
+    {
+        _logger.LogInformation("Using fallback vision models");
+        return new List<OpenRouterModel>
+        {
+            new OpenRouterModel
+            {
+                Id = "meta-llama/llama-3.2-11b-vision-instruct:free",
+                Name = "LLaMA 3.2 11B Vision (Free)",
+                Description = "Free vision model with 11B parameters",
+                PricePerMToken = 0m,
+                ContextLength = 128000,
+                SupportsStreaming = true
+            },
+            new OpenRouterModel
+            {
+                Id = "google/gemini-flash-1.5",
+                Name = "Gemini Flash 1.5",
+                Description = "Fast and efficient vision model",
+                PricePerMToken = 0.075m,
+                ContextLength = 1000000,
+                SupportsStreaming = true
+            }
+        };
+    }
+
     private string GetApiKeyFromHeader()
     {
         return _httpClient.DefaultRequestHeaders.Authorization?.Parameter ?? "";
@@ -543,20 +734,20 @@ public class OpenRouterService : IOpenRouterService, IDisposable
     private class PricingInfo
     {
         [JsonPropertyName("prompt")]
-        public string? PromptString { get; set; }
+        public string? PromptPriceString { get; set; }
         
         [JsonPropertyName("completion")]
-        public string? CompletionString { get; set; }
+        public string? CompletionPriceString { get; set; }
         
         [JsonPropertyName("request")]
-        public string? RequestString { get; set; }
+        public string? RequestPriceString { get; set; }
         
         [JsonPropertyName("image")]
-        public string? ImageString { get; set; }
+        public string? ImagePriceString { get; set; }
         
         // Helper properties to convert string prices to decimals
-        public decimal Prompt => decimal.TryParse(PromptString, out var result) ? result : 0m;
-        public decimal Completion => decimal.TryParse(CompletionString, out var result) ? result : 0m;
+        public decimal Prompt => decimal.TryParse(PromptPriceString, out var result) ? result : 0m;
+        public decimal Completion => decimal.TryParse(CompletionPriceString, out var result) ? result : 0m;
     }
     
     private class ArchitectureInfo

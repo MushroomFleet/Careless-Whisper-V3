@@ -19,14 +19,14 @@
     <IncludeNativeLibrariesForSelfExtract Condition="'$(PublishProfile)' == 'Standalone'">true</IncludeNativeLibrariesForSelfExtract>
     
     <!-- Application Metadata -->
-    <AssemblyTitle>Careless Whisper V3.6.2</AssemblyTitle>
+    <AssemblyTitle>Careless Whisper V3.6.3</AssemblyTitle>
     <AssemblyDescription>Dual-Mode Voice-to-Text &amp; AI Assistant for Windows</AssemblyDescription>
     <AssemblyCompany>MushroomFleet</AssemblyCompany>
-    <AssemblyProduct>Careless Whisper V3.6.2</AssemblyProduct>
+    <AssemblyProduct>Careless Whisper V3.6.3</AssemblyProduct>
     <AssemblyCopyright>Copyright © 2025 MushroomFleet</AssemblyCopyright>
-    <AssemblyVersion>3.6.2.0</AssemblyVersion>
-    <FileVersion>3.6.2.0</FileVersion>
-    <Version>3.6.2</Version>
+    <AssemblyVersion>3.6.3.0</AssemblyVersion>
+    <FileVersion>3.6.3.0</FileVersion>
+    <Version>3.6.3</Version>
     
     <!-- Application Icon -->
     <!-- <ApplicationIcon>Resources\app-icon.ico</ApplicationIcon> -->
@@ -51,13 +51,18 @@
     <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
     
     <!-- Dependency Injection and Configuration -->
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.0" />
     
     <!-- JSON Serialization for OpenRouter API -->
-    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    
+    <!-- Screen Capture and Vision Processing -->
+    <PackageReference Include="System.Drawing.Common" Version="9.0.1" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="9.0.0" />
   </ItemGroup>
 
   <!-- Ensure native libraries are properly included in single-file deployments -->
