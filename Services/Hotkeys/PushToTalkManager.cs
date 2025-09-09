@@ -9,11 +9,13 @@ public class PushToTalkManager : IDisposable
     private readonly TaskPoolGlobalHook _hook;
     private readonly KeyCode _pushToTalkKey;
     private readonly KeyCode _llmPromptKey; // NEW
+    private readonly KeyCode _visionCaptureKey; // NEW - F3 for vision capture
     private readonly HashSet<KeyCode> _activeModifiers; // NEW
     private readonly ILogger<PushToTalkManager> _logger;
     private bool _isTransmitting;
     private bool _isLlmMode; // NEW
     private bool _isCopyPromptMode; // NEW for Ctrl+F2
+    private bool _isVisionPttMode; // NEW for Ctrl+F3 PTT
     private readonly object _transmissionLock = new object();
     private int _hookRestartCount;
     private const int MaxRestartAttempts = 3;
@@ -25,14 +27,20 @@ public class PushToTalkManager : IDisposable
     public event Action? LlmTransmissionEnded; // NEW
     public event Action? CopyPromptTransmissionStarted; // NEW for Ctrl+F2
     public event Action? CopyPromptTransmissionEnded; // NEW for Ctrl+F2
+    public event Action? VisionCaptureStarted; // NEW - Shift+F3
+    public event Action? VisionCaptureEnded; // NEW - Shift+F3
+    public event Action? VisionCaptureWithPromptStarted; // NEW - Ctrl+F3
+    public event Action? VisionCaptureWithPromptEnded; // NEW - Ctrl+F3
 
     public PushToTalkManager(
         ILogger<PushToTalkManager> logger, 
         KeyCode pushToTalkKey = KeyCode.VcF1,
-        KeyCode llmPromptKey = KeyCode.VcF2) // NEW
+        KeyCode llmPromptKey = KeyCode.VcF2,
+        KeyCode visionCaptureKey = KeyCode.VcF3) // NEW
     {
         _pushToTalkKey = pushToTalkKey;
         _llmPromptKey = llmPromptKey; // NEW
+        _visionCaptureKey = visionCaptureKey; // NEW
         _activeModifiers = new HashSet<KeyCode>(); // NEW
         _logger = logger;
         _hook = new TaskPoolGlobalHook();
@@ -114,6 +122,30 @@ public class PushToTalkManager : IDisposable
             }
             e.SuppressEvent = true;
         }
+        // Handle Shift+F3 (Vision Capture - immediate trigger)
+        else if (e.Data.KeyCode == _visionCaptureKey && _activeModifiers.Contains(KeyCode.VcLeftShift))
+        {
+            _logger.LogDebug("Vision capture triggered (Shift+F3)");
+            VisionCaptureStarted?.Invoke();
+            e.SuppressEvent = true;
+        }
+        // Handle Ctrl+F3 (Vision PTT - hold/release like other PTT keys)
+        else if (e.Data.KeyCode == _visionCaptureKey && _activeModifiers.Contains(KeyCode.VcLeftControl))
+        {
+            lock (_transmissionLock)
+            {
+                if (!_isTransmitting)
+                {
+                    _isTransmitting = true;
+                    _isLlmMode = false;
+                    _isCopyPromptMode = false;
+                    _isVisionPttMode = true;
+                    _logger.LogDebug("Vision PTT transmission started (Ctrl+F3 hold)");
+                    VisionCaptureWithPromptStarted?.Invoke();
+                }
+            }
+            e.SuppressEvent = true;
+        }
     }
 
     private void OnKeyReleased(object? sender, KeyboardHookEventArgs e)
@@ -126,9 +158,10 @@ public class PushToTalkManager : IDisposable
         }
 
         // Handle key release for all modes
-        if ((e.Data.KeyCode == _pushToTalkKey && !_isLlmMode && !_isCopyPromptMode) || 
+        if ((e.Data.KeyCode == _pushToTalkKey && !_isLlmMode && !_isCopyPromptMode && !_isVisionPttMode) || 
             (e.Data.KeyCode == _llmPromptKey && _isLlmMode) ||
-            (e.Data.KeyCode == _llmPromptKey && _isCopyPromptMode))
+            (e.Data.KeyCode == _llmPromptKey && _isCopyPromptMode) ||
+            (e.Data.KeyCode == _visionCaptureKey && _isVisionPttMode))
         {
             lock (_transmissionLock)
             {
@@ -145,6 +178,12 @@ public class PushToTalkManager : IDisposable
                     {
                         _logger.LogDebug("Copy-prompt transmission ended");
                         CopyPromptTransmissionEnded?.Invoke();
+                    }
+                    else if (_isVisionPttMode)
+                    {
+                        _isVisionPttMode = false;
+                        _logger.LogDebug("Vision PTT transmission ended (Ctrl+F3 release)");
+                        VisionCaptureWithPromptEnded?.Invoke();
                     }
                     else
                     {

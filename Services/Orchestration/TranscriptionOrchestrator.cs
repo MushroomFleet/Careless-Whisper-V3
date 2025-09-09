@@ -8,6 +8,7 @@ using CarelessWhisperV2.Services.Settings;
 using CarelessWhisperV2.Services.OpenRouter;
 using CarelessWhisperV2.Services.Ollama;
 using CarelessWhisperV2.Services.AudioNotification;
+using CarelessWhisperV2.Services.Vision;
 using CarelessWhisperV2.Models;
 using System.IO;
 using System.Windows;
@@ -25,6 +26,7 @@ public class TranscriptionOrchestrator : IDisposable
     private readonly IOpenRouterService _openRouterService; // NEW
     private readonly IOllamaService _ollamaService; // NEW
     private readonly IAudioNotificationService _audioNotificationService; // NEW
+    private readonly IVisionProcessingService _visionProcessingService; // NEW - Vision capture
     private readonly ILogger<TranscriptionOrchestrator> _logger;
     
     private string _currentRecordingPath = "";
@@ -45,6 +47,7 @@ public class TranscriptionOrchestrator : IDisposable
         IOpenRouterService openRouterService, // NEW
         IOllamaService ollamaService, // NEW
         IAudioNotificationService audioNotificationService, // NEW
+        IVisionProcessingService visionProcessingService, // NEW - Vision capture
         ILogger<TranscriptionOrchestrator> logger)
     {
         _hotkeyManager = hotkeyManager;
@@ -56,6 +59,7 @@ public class TranscriptionOrchestrator : IDisposable
         _openRouterService = openRouterService; // NEW
         _ollamaService = ollamaService; // NEW
         _audioNotificationService = audioNotificationService; // NEW
+        _visionProcessingService = visionProcessingService; // NEW - Vision capture
         _logger = logger;
 
         _hotkeyManager.TransmissionStarted += OnTransmissionStarted;
@@ -64,6 +68,9 @@ public class TranscriptionOrchestrator : IDisposable
         _hotkeyManager.LlmTransmissionEnded += OnLlmTransmissionEnded; // NEW
         _hotkeyManager.CopyPromptTransmissionStarted += OnCopyPromptTransmissionStarted; // NEW for Ctrl+F2
         _hotkeyManager.CopyPromptTransmissionEnded += OnCopyPromptTransmissionEnded; // NEW for Ctrl+F2
+        _hotkeyManager.VisionCaptureStarted += OnVisionCaptureStarted; // NEW for Shift+F3
+        _hotkeyManager.VisionCaptureWithPromptStarted += OnVisionPttTransmissionStarted; // NEW for Ctrl+F3 PTT
+        _hotkeyManager.VisionCaptureWithPromptEnded += OnVisionPttTransmissionEnded; // NEW for Ctrl+F3 PTT
         
         // Load settings
         _ = Task.Run(LoadSettingsAsync);
@@ -904,6 +911,296 @@ public class TranscriptionOrchestrator : IDisposable
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to delete temporary copy-prompt file: {Path}", audioFilePath);
+                }
+            }
+        }
+    }
+
+    // NEW Vision event handlers for F3 hotkeys
+    private async void OnVisionCaptureStarted()
+    {
+        try
+        {
+            _logger.LogInformation("Vision capture started (Shift+F3)");
+            
+            // Process vision capture in background to avoid blocking
+            _ = Task.Run(async () => await ProcessVisionCaptureAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start vision capture");
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = "Failed to start vision capture"
+            });
+        }
+    }
+
+    private async void OnVisionCaptureWithPromptStarted()
+    {
+        try
+        {
+            _logger.LogInformation("Vision capture with prompt started (Ctrl+F3)");
+            
+            // Process vision capture with prompt in background
+            _ = Task.Run(async () => await ProcessVisionCaptureWithPromptAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start vision capture with prompt");
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = "Failed to start vision capture with prompt"
+            });
+        }
+    }
+
+    private async Task ProcessVisionCaptureAsync()
+    {
+        var startTime = DateTime.Now;
+        
+        try
+        {
+            _logger.LogInformation("Processing vision capture workflow (Shift+F3)");
+            
+            // Use the vision processing service to capture and analyze
+            var result = await _visionProcessingService.CaptureAndAnalyzeAsync();
+            
+            if (!string.IsNullOrWhiteSpace(result))
+            {
+                _logger.LogInformation("Vision analysis completed: {Preview}", 
+                    result.Substring(0, Math.Min(100, result.Length)));
+                
+                // Fire completion event
+                TranscriptionCompleted?.Invoke(this, new TranscriptionCompletedEventArgs
+                {
+                    TranscriptionResult = new TranscriptionResult 
+                    { 
+                        FullText = result,
+                        Language = "en", // Default for vision analysis
+                        Segments = new List<TranscriptionSegment>()
+                    },
+                    ProcessingTime = DateTime.Now - startTime
+                });
+            }
+            else
+            {
+                _logger.LogWarning("Vision capture returned empty result");
+                TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+                {
+                    Message = "Vision capture was cancelled or returned empty result"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Vision capture processing failed: {Error}", ex.Message);
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = $"Vision capture failed: {ex.Message}"
+            });
+        }
+    }
+
+    private async Task ProcessVisionCaptureWithPromptAsync()
+    {
+        // This method is currently not used because Ctrl+F3 needs PTT behavior
+        // We'll implement the PTT+Vision workflow in new methods
+        _logger.LogInformation("ProcessVisionCaptureWithPromptAsync called - this should not happen with new PTT implementation");
+        
+        TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+        {
+            Message = "Ctrl+F3 should use PTT behavior, not immediate trigger"
+        });
+    }
+
+    // NEW Vision PTT event handlers for Ctrl+F3
+    private async void OnVisionPttTransmissionStarted()
+    {
+        try
+        {
+            _logger.LogInformation("Vision PTT recording started (Ctrl+F3 hold)");
+            _currentRecordingPath = GenerateRecordingPath();
+            await _audioService.StartRecordingAsync(_currentRecordingPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start vision PTT recording");
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = "Failed to start vision PTT recording"
+            });
+        }
+    }
+
+    private async void OnVisionPttTransmissionEnded()
+    {
+        try
+        {
+            await _audioService.StopRecordingAsync();
+            _logger.LogInformation("Vision PTT recording stopped: {Path}", _currentRecordingPath);
+
+            // Wait for file to be fully released
+            await Task.Delay(1000);
+
+            if (File.Exists(_currentRecordingPath))
+            {
+                var fileInfo = new FileInfo(_currentRecordingPath);
+                _logger.LogInformation("Vision PTT audio file created: {Path}, Size: {Size} bytes", _currentRecordingPath, fileInfo.Length);
+                
+                // Process speech+vision workflow in background
+                _ = Task.Run(async () => await ProcessSpeechPlusVisionAsync(_currentRecordingPath));
+            }
+            else
+            {
+                _logger.LogWarning("Vision PTT audio file not found after recording: {Path}", _currentRecordingPath);
+                TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+                {
+                    Message = "Vision PTT audio file not found after recording"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stop vision PTT recording");
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = "Failed to stop vision PTT recording"
+            });
+        }
+    }
+
+    // NEW Speech+Vision combined processing for Ctrl+F3
+    private async Task ProcessSpeechPlusVisionAsync(string audioFilePath)
+    {
+        var startTime = DateTime.Now;
+        TranscriptionEntry? transcriptionEntry = null;
+        
+        try
+        {
+            _logger.LogInformation("SPEECH+VISION: Starting speech+vision processing workflow");
+            
+            // First, transcribe the speech
+            var transcriptionResult = await _transcriptionService.TranscribeAsync(audioFilePath);
+            
+            if (string.IsNullOrWhiteSpace(transcriptionResult.FullText))
+            {
+                _logger.LogWarning("SPEECH+VISION: Speech transcription returned empty result");
+                TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+                {
+                    Message = "No speech detected in audio for speech+vision processing"
+                });
+                return;
+            }
+
+            _logger.LogInformation("SPEECH+VISION: Speech transcribed: '{Speech}'", 
+                transcriptionResult.FullText.Substring(0, Math.Min(100, transcriptionResult.FullText.Length)));
+
+            // Now capture the screen area
+            _logger.LogInformation("SPEECH+VISION: Showing screen capture overlay for user selection");
+            var selectedArea = await _visionProcessingService.CaptureAndAnalyzeAsync();
+            
+            if (string.IsNullOrWhiteSpace(selectedArea) || selectedArea.StartsWith("Screen capture was cancelled"))
+            {
+                _logger.LogWarning("SPEECH+VISION: Screen capture was cancelled by user");
+                TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+                {
+                    Message = "Screen capture was cancelled"
+                });
+                return;
+            }
+
+            // Combine speech transcription with vision analysis
+            var combinedResult = $"SPEECH: {transcriptionResult.FullText}\n\nVISION: {selectedArea}";
+            
+            _logger.LogInformation("SPEECH+VISION: Combined processing completed. Speech: {SpeechLength} chars, Vision: {VisionLength} chars", 
+                transcriptionResult.FullText.Length, selectedArea.Length);
+
+            // Create transcription entry
+            transcriptionEntry = new TranscriptionEntry
+            {
+                Timestamp = startTime,
+                FullText = combinedResult,
+                Segments = transcriptionResult.Segments,
+                Language = transcriptionResult.Language,
+                Duration = DateTime.Now - startTime,
+                ModelUsed = $"Whisper:{_settings.Whisper.ModelSize} + Vision:{_settings.SelectedLlmProvider}",
+                AudioFilePath = _settings.Logging.SaveAudioFiles ? audioFilePath : null
+            };
+
+            // Copy combined result to clipboard
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                System.Windows.Clipboard.SetText(combinedResult);
+                _logger.LogInformation("SPEECH+VISION: Combined result copied to clipboard");
+            });
+
+            // Log transcription if enabled
+            if (_settings.Logging.EnableTranscriptionLogging)
+            {
+                await _transcriptionLogger.LogTranscriptionAsync(transcriptionEntry);
+            }
+
+            // Fire completion event
+            TranscriptionCompleted?.Invoke(this, new TranscriptionCompletedEventArgs
+            {
+                TranscriptionResult = new TranscriptionResult 
+                { 
+                    FullText = combinedResult,
+                    Language = transcriptionResult.Language,
+                    Segments = transcriptionResult.Segments
+                },
+                ProcessingTime = DateTime.Now - startTime
+            });
+
+            _logger.LogInformation("SPEECH+VISION: Workflow completed successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SPEECH+VISION: Processing failed: {Error}", ex.Message);
+            
+            // Try to log what we have if transcriptionEntry was created
+            if (_settings.Logging.EnableTranscriptionLogging && transcriptionEntry != null)
+            {
+                transcriptionEntry.FullText += $"\n\nPROCESSING ERROR: {ex.Message}";
+                transcriptionEntry.Duration = DateTime.Now - startTime;
+                try
+                {
+                    await _transcriptionLogger.LogTranscriptionAsync(transcriptionEntry);
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Failed to log error speech+vision entry");
+                }
+            }
+            
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = $"Speech+vision processing failed: {ex.Message}"
+            });
+        }
+        finally
+        {
+            // Clean up temporary audio file
+            if (!_settings.Logging.SaveAudioFiles)
+            {
+                try
+                {
+                    if (File.Exists(audioFilePath))
+                    {
+                        File.Delete(audioFilePath);
+                        _logger.LogDebug("Deleted temporary speech+vision audio file: {Path}", audioFilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete temporary speech+vision file: {Path}", audioFilePath);
                 }
             }
         }

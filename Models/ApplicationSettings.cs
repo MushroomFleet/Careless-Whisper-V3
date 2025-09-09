@@ -21,6 +21,7 @@ public class ApplicationSettings : IValidatableObject
     public OpenRouterSettings OpenRouter { get; set; } = new(); // NEW
     public OllamaSettings Ollama { get; set; } = new(); // NEW
     public AudioNotificationSettings AudioNotification { get; set; } = new(); // NEW
+    public VisionSettings Vision { get; set; } = new(); // NEW V3.6.3
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -95,5 +96,26 @@ public class AudioNotificationSettings : IValidatableObject
             if (extension != ".wav" && extension != ".mp3")
                 yield return new ValidationResult("Audio file must be .wav or .mp3 format");
         }
+    }
+}
+
+public class VisionSettings : IValidatableObject
+{
+    public string SystemPrompt { get; set; } = "Describe the image in a single line paragraph";
+    public int MaxTokens { get; set; } = 1000;
+    public int ImageQuality { get; set; } = 85; // JPEG quality 1-100
+    public bool EnableVisionCapture { get; set; } = true;
+    public string SelectedVisionModel { get; set; } = ""; // Will use current LLM provider's model
+    
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(SystemPrompt))
+            yield return new ValidationResult("Vision system prompt cannot be empty");
+            
+        if (MaxTokens < 100 || MaxTokens > 4000)
+            yield return new ValidationResult("Max tokens must be between 100 and 4000");
+            
+        if (ImageQuality < 1 || ImageQuality > 100)
+            yield return new ValidationResult("Image quality must be between 1 and 100");
     }
 }

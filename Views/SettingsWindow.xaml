@@ -99,6 +99,19 @@
                                 Width="60"/>
                     </Grid>
                     
+                    <TextBlock Text="Vision Capture Keys:" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                    <Border BorderBrush="LightBlue" BorderThickness="1" Padding="10" Margin="0,0,0,15" Background="#F0F8FF">
+                        <StackPanel>
+                            <TextBlock Text="Shift+F3: Vision Capture (immediate)" FontWeight="Medium" Margin="0,0,0,5"/>
+                            <TextBlock Text="• Captures selected screen area and analyzes with AI" Margin="10,0,0,2"/>
+                            <TextBlock Text="• Uses default prompt for quick image description" Margin="10,0,0,5"/>
+                            
+                            <TextBlock Text="Ctrl+F3: Speech + Vision (PTT)" FontWeight="Medium" Margin="0,5,0,5"/>
+                            <TextBlock Text="• Hold to record speech, release to capture screen" Margin="10,0,0,2"/>
+                            <TextBlock Text="• Combines speech transcription with image analysis" Margin="10,0,0,2"/>
+                        </StackPanel>
+                    </Border>
+                    
                     <TextBlock Text="Instructions: Click in the text box and press the key combination you want to use." 
                                FontStyle="Italic" 
                                Foreground="Gray" 
@@ -510,6 +523,96 @@
                                Foreground="Gray" 
                                Margin="0,5,0,0"/>
                 </StackPanel>
+            </TabItem>
+
+            <!-- Vision Tab - NEW V3.6.3 -->
+            <TabItem Header="Vision">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="15">
+                        <TextBlock Text="Vision Analysis Configuration" FontSize="16" FontWeight="Bold" Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="System Prompt:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="VisionSystemPromptTextBox" 
+                                 Text="Describe the image in a single line paragraph"
+                                 Height="60"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="Quick Prompt Presets:" FontWeight="SemiBold" Margin="0,10,0,5"/>
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ComboBox x:Name="PromptPresetsComboBox" 
+                                      Grid.Column="0"
+                                      SelectionChanged="PromptPresets_SelectionChanged"
+                                      Margin="0,0,10,0">
+                                <ComboBoxItem Content="Single line description" Tag="Describe the image in a single line paragraph"/>
+                                <ComboBoxItem Content="Detailed analysis" Tag="Provide a detailed analysis of this image, including objects, people, text, and context"/>
+                                <ComboBoxItem Content="OCR text extraction" Tag="Extract all visible text from this image"/>
+                                <ComboBoxItem Content="UI element description" Tag="Describe the user interface elements and layout in this screenshot"/>
+                                <ComboBoxItem Content="Accessibility description" Tag="Provide an accessibility-friendly description of this image for screen readers"/>
+                            </ComboBox>
+                            
+                            <Button x:Name="ApplyPresetButton" 
+                                    Grid.Column="1"
+                                    Content="Apply" 
+                                    Click="ApplyPreset_Click"
+                                    Width="60"/>
+                        </Grid>
+                        
+                        <TextBlock Text="Image Processing:" FontWeight="SemiBold" Margin="0,10,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="100"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Text="Max Tokens:" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBox x:Name="VisionMaxTokensTextBox" 
+                                     Grid.Column="1"
+                                     Text="1000" 
+                                     VerticalAlignment="Center"/>
+                            
+                            <TextBlock Text="Image Quality:" Grid.Column="2" VerticalAlignment="Center" Margin="20,0,10,0"/>
+                            <Slider x:Name="ImageQualitySlider" 
+                                    Grid.Column="3"
+                                    Minimum="1" 
+                                    Maximum="100" 
+                                    Value="85" 
+                                    TickFrequency="5"
+                                    IsSnapToTickEnabled="True"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+                        
+                        <TextBlock Text="Vision Model Compatibility:" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                        <Border BorderBrush="LightGray" BorderThickness="1" Padding="10" Margin="0,0,0,15">
+                            <StackPanel>
+                                <TextBlock x:Name="VisionModelCompatibilityTextBlock" Text="Checking compatibility..." FontWeight="Medium"/>
+                                <TextBlock x:Name="VisionModelDetailsTextBlock" Text="" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <Button x:Name="TestVisionCaptureButton" 
+                                Content="Test Vision Capture" 
+                                Click="TestVisionCapture_Click"
+                                Width="150" 
+                                HorizontalAlignment="Left"
+                                Margin="0,0,0,15"/>
+                        
+                        <TextBlock Text="Note: Vision analysis uses your selected LLM provider (OpenRouter/Ollama). Ensure your model supports image inputs. Shift+F3 captures and analyzes immediately, while Ctrl+F3 records speech first then captures the screen." 
+                                   FontStyle="Italic" 
+                                   Foreground="Gray" 
+                                   TextWrapping="Wrap"
+                                   Margin="0,10,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             
         </TabControl>

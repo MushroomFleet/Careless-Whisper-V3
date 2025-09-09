@@ -1196,6 +1196,45 @@ public partial class SettingsWindow : Window
         _settings.AudioNotification.PlayOnLlmResponse = PlayOnLlmResponseCheckBox.IsChecked ?? false;
         _settings.AudioNotification.AudioFilePath = AudioFilePathTextBox.Text;
         _settings.AudioNotification.Volume = VolumeSlider.Value;
+
+        // Vision V3.6.3 Settings
+        _settings.Vision.SystemPrompt = VisionSystemPromptTextBox.Text;
+        _settings.Vision.MaxTokens = int.Parse(VisionMaxTokensTextBox.Text);
+        _settings.Vision.ImageQuality = (int)ImageQualitySlider.Value;
+    }
+
+    // Vision Tab Event Handlers - NEW V3.6.3
+    private void PromptPresets_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // This will be handled by the Apply button - no immediate action needed
+    }
+
+    private void ApplyPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (PromptPresetsComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag != null)
+        {
+            var presetPrompt = selectedItem.Tag.ToString();
+            VisionSystemPromptTextBox.Text = presetPrompt;
+            
+            _logger.LogInformation("Applied vision prompt preset: {Preset}", selectedItem.Content);
+        }
+    }
+
+    private void TestVisionCapture_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            MessageBox.Show("Test Vision Capture:\n\n" +
+                           "1. Press Shift+F3 to test immediate vision capture\n" +
+                           "2. Press Ctrl+F3 to test speech + vision capture\n\n" +
+                           "Results will use your current vision prompt settings and be copied to clipboard.",
+                           "Vision Capture Test",
+                           MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to show vision capture test dialog");
+        }
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
