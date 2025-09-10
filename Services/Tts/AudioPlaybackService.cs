@@ -12,6 +12,9 @@ public class AudioPlaybackService : IAudioPlaybackService
     private readonly ILogger<AudioPlaybackService> _logger;
     private bool _disposed;
     private float _volume = 1.0f;
+    
+    // DIAGNOSTIC: Audio playback tracking
+    private int _playbackInvocationCount = 0;
 
     public bool IsPlaying
     {
@@ -47,6 +50,10 @@ public class AudioPlaybackService : IAudioPlaybackService
 
     public async Task<bool> PlayAudioAsync(byte[] audioData, CancellationToken cancellationToken = default)
     {
+        _playbackInvocationCount++;
+        _logger.LogInformation("DIAGNOSTIC TTS: PlayAudioAsync called #{Count}, data size: {Size} bytes", 
+            _playbackInvocationCount, audioData?.Length ?? 0);
+        
         if (_disposed)
             throw new ObjectDisposedException(nameof(AudioPlaybackService));
 

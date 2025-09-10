@@ -35,6 +35,9 @@ public class TranscriptionOrchestrator : IDisposable
     private string _capturedClipboardContent = ""; // Store clipboard content for copy-prompt mode
     private bool _disposed;
     private ApplicationSettings _settings = new();
+    
+    // DIAGNOSTIC: TTS event tracking
+    private int _ttsEventInvocationCount = 0;
 
     public event EventHandler<TranscriptionCompletedEventArgs>? TranscriptionCompleted;
     public event EventHandler<TranscriptionErrorEventArgs>? TranscriptionError;
@@ -1085,7 +1088,8 @@ public class TranscriptionOrchestrator : IDisposable
     {
         try
         {
-            _logger.LogInformation("TTS triggered (Ctrl+F1)");
+            _ttsEventInvocationCount++;
+            _logger.LogInformation("DIAGNOSTIC TTS: OnTtsTriggered called #{Count}", _ttsEventInvocationCount);
             
             // Process TTS in background to avoid blocking
             _ = Task.Run(async () => await ProcessTtsAsync());

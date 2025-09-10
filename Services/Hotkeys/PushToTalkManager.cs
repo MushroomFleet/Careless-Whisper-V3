@@ -20,6 +20,11 @@ public class PushToTalkManager : IDisposable
     private int _hookRestartCount;
     private const int MaxRestartAttempts = 3;
     private bool _disposed;
+    
+    // DIAGNOSTIC: TTS trigger tracking and debouncing
+    private int _ttsTriggeredCount = 0;
+    private DateTime _lastTtsTriggerTime = DateTime.MinValue;
+    private const int TtsDebounceMs = 200; // Prevent rapid-fire triggers within 200ms
 
     public event Action? TransmissionStarted;
     public event Action? TransmissionEnded;
@@ -78,7 +83,24 @@ public class PushToTalkManager : IDisposable
         // Handle Ctrl+F1 (TTS - immediate trigger) - CHECK THIS FIRST!
         if (e.Data.KeyCode == _pushToTalkKey && _activeModifiers.Contains(KeyCode.VcLeftControl))
         {
-            _logger.LogDebug("TTS triggered (Ctrl+F1)");
+            var now = DateTime.Now;
+            var timeSinceLastTrigger = now - _lastTtsTriggerTime;
+            
+            _ttsTriggeredCount++;
+            _logger.LogInformation("DIAGNOSTIC TTS: Trigger #{Count} detected, time since last: {TimeDiff}ms", 
+                _ttsTriggeredCount, timeSinceLastTrigger.TotalMilliseconds);
+            
+            // Debounce: Ignore triggers that occur too quickly after previous one
+            if (timeSinceLastTrigger.TotalMilliseconds < TtsDebounceMs)
+            {
+                _logger.LogWarning("DIAGNOSTIC TTS: BLOCKED duplicate trigger #{Count} (within {DebounceMs}ms debounce window)", 
+                    _ttsTriggeredCount, TtsDebounceMs);
+                e.SuppressEvent = true;
+                return;
+            }
+            
+            _lastTtsTriggerTime = now;
+            _logger.LogInformation("DIAGNOSTIC TTS: ACCEPTED trigger #{Count}, invoking TtsTriggered event", _ttsTriggeredCount);
             TtsTriggered?.Invoke();
             e.SuppressEvent = true;
         }

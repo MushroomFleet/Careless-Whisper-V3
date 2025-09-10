@@ -14,6 +14,9 @@ public class TtsHotkeyHandler
     private readonly ISettingsService _settingsService;
     private readonly ILogger<TtsHotkeyHandler> _logger;
     private CancellationTokenSource? _currentTtsCts;
+    
+    // DIAGNOSTIC: TTS handler invocation tracking
+    private int _handleCtrlF1InvocationCount = 0;
 
     public TtsHotkeyHandler(
         ITtsEngine ttsEngine,
@@ -33,6 +36,9 @@ public class TtsHotkeyHandler
     {
         try
         {
+            _handleCtrlF1InvocationCount++;
+            _logger.LogInformation("DIAGNOSTIC TTS: HandleCtrlF1Async called #{Count}", _handleCtrlF1InvocationCount);
+            
             // Cancel any existing TTS operation
             _currentTtsCts?.Cancel();
             _currentTtsCts = new CancellationTokenSource();
