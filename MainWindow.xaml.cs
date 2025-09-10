@@ -92,7 +92,7 @@ public partial class MainWindow : Window
                     var statusText = FindName("StatusText") as TextBlock;
                     if (statusText != null)
                     {
-                        statusText.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt";
+                        statusText.Text = "Ready - F1: Speech, Ctrl+F1: TTS, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt";
                     }
                 });
                 _logger.LogInformation("Orchestrator ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt");

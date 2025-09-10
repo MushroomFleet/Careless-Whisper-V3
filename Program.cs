@@ -95,9 +95,33 @@ public class Program
             builder.Services.AddSingleton<CarelessWhisperV2.Services.Vision.IImageProcessingService, CarelessWhisperV2.Services.Vision.ImageProcessingService>();
             builder.Services.AddSingleton<CarelessWhisperV2.Services.Vision.IVisionProcessingService, CarelessWhisperV2.Services.Vision.VisionProcessingService>();
             
+            // V3.6.5 TTS services - using lazy initialization to prevent startup hangs
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.Python.PythonEnvironmentManager>();
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.Tts.KittenTtsEngine>();
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.Tts.WindowsSapiEngine>();
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.Tts.ITtsEngine, CarelessWhisperV2.Services.Tts.TtsFallbackService>();
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.Tts.IAudioPlaybackService, CarelessWhisperV2.Services.Tts.AudioPlaybackService>();
+            builder.Services.AddSingleton<CarelessWhisperV2.Services.Tts.TtsHotkeyHandler>();
+            
             // Application services
             builder.Services.AddSingleton<PushToTalkManager>();
-            builder.Services.AddSingleton<TranscriptionOrchestrator>();
+            builder.Services.AddSingleton<TranscriptionOrchestrator>(serviceProvider =>
+            {
+                return new TranscriptionOrchestrator(
+                    serviceProvider.GetRequiredService<PushToTalkManager>(),
+                    serviceProvider.GetRequiredService<IAudioService>(),
+                    serviceProvider.GetRequiredService<ITranscriptionService>(),
+                    serviceProvider.GetRequiredService<IClipboardService>(),
+                    serviceProvider.GetRequiredService<ITranscriptionLogger>(),
+                    serviceProvider.GetRequiredService<ISettingsService>(),
+                    serviceProvider.GetRequiredService<IOpenRouterService>(),
+                    serviceProvider.GetRequiredService<IOllamaService>(),
+                    serviceProvider.GetRequiredService<IAudioNotificationService>(),
+                    serviceProvider.GetRequiredService<CarelessWhisperV2.Services.Vision.IVisionProcessingService>(),
+                    serviceProvider.GetRequiredService<CarelessWhisperV2.Services.Tts.TtsHotkeyHandler>(),
+                    serviceProvider.GetRequiredService<ILogger<TranscriptionOrchestrator>>()
+                );
+            });
             
             // UI
             builder.Services.AddSingleton<MainWindow>();

@@ -14,15 +14,18 @@ d:/TOOLS/carelesswhisper361-plus/Careless-Whisper-V3/
 ├── ✅ App.xaml.cs                       # WPF application code-behind
 ├── ✅ AssemblyInfo.cs                   # Assembly metadata
 ├── ✅ build-framework-dependent.ps1     # Build script for framework-dependent release
-├── ✅ build-standalone.ps1              # Build script for standalone release
+├── ✅ build-standalone.ps1              # Build script for standalone release  
+├── ✅ build-tts.ps1                     # CarelessKitten TTS build script
 ├── ✅ careless-whisper-V2.sln           # Visual Studio solution file
-├── ❌ Careless-Whisper-v3.6.2-portable-lite.zip # Release package (build artifact)
+├── ❌ Careless-Whisper-v3.6.3-portable-lite.zip # Release package (build artifact)
 ├── ✅ CarelessWhisperV2.csproj          # Project file
+├── ✅ copy-python-to-debug.ps1          # TTS development utility script
 ├── ✅ DISTRIBUTION_README.md            # Distribution documentation
 ├── ✅ DISTRIBUTION-GUIDE.md             # Distribution guide
 ├── ✅ do-not-upload.md                  # This file - GitHub upload guide
 ├── ❌ ggml-base.bin                     # Whisper model binary (large file)
 ├── ❌ ggml-tiny.bin                     # Whisper model binary (large file)
+├── ✅ RELEASE_NOTES_V3.6.5.md           # V3.6.5 release documentation
 ├── ✅ GITHUB_FILE_STRUCTURE_GUIDE.md    # GitHub structure guide
 ├── ✅ index.html                        # Web interface
 ├── ✅ LICENSE                           # License file
@@ -105,22 +108,71 @@ d:/TOOLS/carelesswhisper361-plus/Careless-Whisper-V3/
 │       ├── ❌ win-arm64/                # ARM64 Windows runtime
 │       ├── ❌ win-x64/                  # x64 Windows runtime  
 │       └── ❌ win-x86/                  # x86 Windows runtime
-├── ❌ dist-standalone/                  # Standalone distribution
-│   ├── ❌ CarelessWhisperV2.exe         # Self-contained executable
+├── ❌ dist-standalone/                  # Standalone distribution (V3.6.5)
+│   ├── ❌ CarelessWhisperV3.6.5-portable.exe # Self-contained executable (269MB)
+│   ├── ❌ CarelessWhisperV3.6.5-portable.zip # Compressed distribution package
 │   ├── ❌ CarelessWhisperV2.pdb         # Debug symbols
 │   ├── ❌ DISTRIBUTION_README.md        # Distribution documentation (copy)
-│   └── ❌ ggml-tiny.bin                 # Whisper model binary (copy)
+│   ├── ❌ ggml-tiny.bin                 # Whisper model binary (copy)
+│   ├── ❌ python/                       # Embedded Python environment (copy)
+│   └── ❌ scripts/                      # TTS bridge scripts (copy)
+```
+
+## CarelessKitten TTS Components (V3.6.5)
+
+### TTS Scripts and Setup (UPLOAD - Source Code)
+```
+├── ✅ scripts/                          # TTS automation scripts
+│   ├── ✅ kitten_tts_bridge.py          # CarelessKitten TTS bridge script
+│   └── ✅ setup_python_environment.ps1  # Python environment setup script
+```
+
+### Python Environment (DO NOT UPLOAD - Large Binaries)
+```
+├── ❌ python/                           # Embedded Python 3.11.9 environment (~20MB+)
+│   ├── ❌ python.exe                    # Python executable
+│   ├── ❌ pythonw.exe                   # Python windowed executable
+│   ├── ❌ *.pyd                         # Python extension modules
+│   ├── ❌ *.dll                         # Python runtime libraries
+│   ├── ❌ python311.zip                 # Python standard library
+│   ├── ❌ Lib/                          # Python library directory
+│   │   ├── ❌ site-packages/            # Installed packages
+│   │   │   ├── ❌ kittentts/            # KittenTTS neural TTS package
+│   │   │   ├── ❌ num2words/            # Professional text normalization
+│   │   │   ├── ❌ phonemizer/           # IPA phoneme processing
+│   │   │   └── ❌ */                    # All other packages
+│   │   └── ❌ */                        # Standard library modules
+│   └── ❌ espeak/                       # Bundled eSpeak phonemizer
+│       ├── ❌ espeak.exe                # eSpeak executable
+│       └── ❌ espeak-data/              # eSpeak language data
+```
+
+### TTS Source Packages (DO NOT UPLOAD - Source Archives)
+```
+├── ❌ espeak/                           # TTS development resources
+│   ├── ❌ espeak.exe                    # eSpeak executable (binary)
+│   ├── ❌ kittentts-0.1.3/             # KittenTTS source package
+│   │   └── ❌ kittentts-0.1.3/         # Unpacked source
+│   │       └── ❌ src/                  # Source code
+│   └── ❌ num2words-0.5.14/            # num2words source package
+│       └── ❌ num2words-0.5.14/         # Unpacked source
+│           └── ❌ num2words/             # Library source
 ```
 
 ## Documentation (UPLOAD)
 
 ```
 ├── ✅ docs/                             # Documentation directory
+│   ├── ✅ careless_kitten_devteam_handoff.md # CarelessKitten TTS handoff
 │   ├── ✅ devteam-handoff-v3-final.md   # Development handoff
 │   ├── ✅ devteam-handoff-v3-fix.md     # Development fixes
 │   ├── ✅ devteam-plans-handoff-v3.md   # Development plans
 │   ├── ✅ DOTNET-DEVTEAM-HANDOFF.md     # .NET team handoff
+│   ├── ✅ ESPEAK_INSTALLATION_GUIDE.md  # eSpeak installation guide
+│   ├── ✅ KITTEN_TTS_SUCCESS_REPORT.md  # TTS integration success report
 │   ├── ✅ SPEAK2MEV2-DEVTEAM-HANDOFF.md # Speech feature handoff
+│   ├── ✅ TTS_INTEGRATION_GUIDE.md      # TTS integration guide
+│   ├── ✅ v363-Vision-plan.md           # Vision feature planning
 │   ├── ✅ ollama-provider/              # Ollama documentation
 │   │   └── ✅ ollama-typescript.md      # TypeScript integration
 │   └── ✅ openrouter-provider/          # OpenRouter documentation
@@ -193,12 +245,18 @@ d:/TOOLS/carelesswhisper361-plus/Careless-Whisper-V3/
 │   │   └── ✅ OpenRouterService.cs      # OpenRouter implementation
 │   ├── ✅ Orchestration/                # Orchestration services
 │   │   └── ✅ TranscriptionOrchestrator.cs # Main orchestrator
+│   ├── ✅ Python/                       # Python environment services
+│   │   └── ✅ *.cs                      # Python integration services
+│   ├── ✅ ScreenCapture/                # Screen capture services  
+│   │   └── ✅ *.cs                      # Vision capture services
 │   ├── ✅ Settings/                     # Settings services
 │   │   ├── ✅ ISettingsService.cs       # Settings interface
 │   │   └── ✅ JsonSettingsService.cs    # JSON settings implementation
-│   └── ✅ Transcription/                # Transcription services
-│       ├── ✅ ITranscriptionService.cs  # Transcription interface
-│       └── ✅ WhisperTranscriptionService.cs # Whisper implementation
+│   ├── ✅ Transcription/                # Transcription services
+│   │   ├── ✅ ITranscriptionService.cs  # Transcription interface
+│   │   └── ✅ WhisperTranscriptionService.cs # Whisper implementation
+│   └── ✅ Tts/                          # Text-to-Speech services
+│       └── ✅ *.cs                      # CarelessKitten TTS services
 ```
 
 ## Frontend Source (UPLOAD)
@@ -274,10 +332,14 @@ Add these to your `.gitignore` file:
 bin/
 obj/
 
-# Distribution output (v3.6.2 release artifacts)
+# Distribution output (v3.6.5 release artifacts)
 dist-framework-dependent/
 dist-standalone/
 *.zip
+
+# CarelessKitten TTS binaries and environments (V3.6.5)
+python/
+espeak/
 
 # User-specific files
 *.user
@@ -303,6 +365,10 @@ v*_final*.txt
 *.gguf
 *.safetensors
 
+# TTS audio test files
+test_*.wav
+*.wav
+
 # Node.js (if applicable)
 node_modules/
 npm-debug.log*
@@ -320,26 +386,33 @@ Thumbs.db
 
 ## Summary
 
-**Total Files to Upload: ~55+ source files**
+**Total Files to Upload: ~70+ source files**
 - All source code (.cs, .xaml files)
-- Project configuration files (including build scripts)
-- Documentation
+- Project configuration files (including TTS build scripts)
+- Documentation (including CarelessKitten TTS guides)
 - Web assets and configurations
 - UI definitions
+- TTS bridge scripts and setup automation
 
-**Total Files to Exclude: ~140+ build artifacts, distributions, and logs**
+**Total Files to Exclude: ~200+ build artifacts, binaries, and environments**
 - Entire `bin/` and `obj/` directories (including Release builds)
 - Distribution directories (`dist-framework-dependent/`, `dist-standalone/`)
-- Release packages (v3.6.2 .zip files)
-- Large binary model files (ggml-base.bin, ggml-tiny.bin)
+- Release packages (v3.6.5 .zip and .exe files)
+- **Embedded Python environment** (~20MB+ binaries)
+- **TTS source packages** (kittentts, num2words archives)
+- **Bundled eSpeak** (executable and data files)
+- Large binary model files (ggml-tiny.bin, ggml-base.bin)
 - IDE-specific cache files
 
-**Post-v3.6.2 Release Updates:**
-- ❌ 1 release package (Careless-Whisper-v3.6.2-portable-lite.zip) - Distribution artifact
-- ❌ Updated distribution directory with v3.6.2 framework-dependent build (~50+ compiled files)
-- ❌ New Release build directories in bin/ and obj/ with v3.6.2 artifacts
-- ❌ Additional Whisper model binary (ggml-base.bin) - Large file requiring Git LFS
-- ✅ 2 build scripts for automated release generation
-- ✅ Updated file structure guide reflecting current v3.6.2 state
+**V3.6.5 CarelessKitten TTS Updates:**
+- ❌ **CarelessWhisperV3.6.5-portable.exe** (269MB) - Standalone executable with embedded Python
+- ❌ **CarelessWhisperV3.6.5-portable.zip** - Complete distribution package
+- ❌ **python/ directory** (~20MB+) - Complete embedded Python 3.11.9 environment
+- ❌ **espeak/ directory** - TTS development resources and source packages
+- ✅ **scripts/kitten_tts_bridge.py** - CarelessKitten TTS bridge script
+- ✅ **scripts/setup_python_environment.ps1** - Python environment automation
+- ✅ **build-tts.ps1** - TTS build integration script
+- ✅ **CarelessKitten TTS documentation** - Comprehensive integration guides
+- ✅ **RELEASE_NOTES_V3.6.5.md** - Complete release documentation
 
-This ensures a clean repository with only essential source code and documentation while excluding build artifacts, release packages, logs, and large binary files that were generated during the v3.6.2 distribution process.
+This ensures a clean repository with essential source code and documentation while excluding the substantial binary components (embedded Python, neural TTS models, compiled executables) that make V3.6.5 a 277MB+ distribution package.
