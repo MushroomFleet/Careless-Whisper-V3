@@ -9,6 +9,7 @@ using CarelessWhisperV2.Services.OpenRouter;
 using CarelessWhisperV2.Services.Ollama;
 using CarelessWhisperV2.Services.AudioNotification;
 using CarelessWhisperV2.Services.Vision;
+using CarelessWhisperV2.Services.Tts;
 using CarelessWhisperV2.Models;
 using System.IO;
 using System.Windows;
@@ -27,6 +28,7 @@ public class TranscriptionOrchestrator : IDisposable
     private readonly IOllamaService _ollamaService; // NEW
     private readonly IAudioNotificationService _audioNotificationService; // NEW
     private readonly IVisionProcessingService _visionProcessingService; // NEW - Vision capture
+    private readonly TtsHotkeyHandler _ttsHotkeyHandler; // NEW V3.6.5 - TTS handler
     private readonly ILogger<TranscriptionOrchestrator> _logger;
     
     private string _currentRecordingPath = "";
@@ -48,6 +50,7 @@ public class TranscriptionOrchestrator : IDisposable
         IOllamaService ollamaService, // NEW
         IAudioNotificationService audioNotificationService, // NEW
         IVisionProcessingService visionProcessingService, // NEW - Vision capture
+        TtsHotkeyHandler ttsHotkeyHandler, // NEW V3.6.5
         ILogger<TranscriptionOrchestrator> logger)
     {
         _hotkeyManager = hotkeyManager;
@@ -60,6 +63,7 @@ public class TranscriptionOrchestrator : IDisposable
         _ollamaService = ollamaService; // NEW
         _audioNotificationService = audioNotificationService; // NEW
         _visionProcessingService = visionProcessingService; // NEW - Vision capture
+        _ttsHotkeyHandler = ttsHotkeyHandler; // NEW V3.6.5 - TTS handler
         _logger = logger;
 
         _hotkeyManager.TransmissionStarted += OnTransmissionStarted;
@@ -71,6 +75,7 @@ public class TranscriptionOrchestrator : IDisposable
         _hotkeyManager.VisionCaptureStarted += OnVisionCaptureStarted; // NEW for Shift+F3
         _hotkeyManager.VisionCaptureWithPromptStarted += OnVisionPttTransmissionStarted; // NEW for Ctrl+F3 PTT
         _hotkeyManager.VisionCaptureWithPromptEnded += OnVisionPttTransmissionEnded; // NEW for Ctrl+F3 PTT
+        _hotkeyManager.TtsTriggered += OnTtsTriggered; // NEW for Ctrl+F1 TTS
         
         // Load settings
         _ = Task.Run(LoadSettingsAsync);
@@ -1071,6 +1076,59 @@ public class TranscriptionOrchestrator : IDisposable
             {
                 Exception = ex,
                 Message = "Failed to stop vision PTT recording"
+            });
+        }
+    }
+
+    // NEW TTS event handler for Ctrl+F1
+    private async void OnTtsTriggered()
+    {
+        try
+        {
+            _logger.LogInformation("TTS triggered (Ctrl+F1)");
+            
+            // Process TTS in background to avoid blocking
+            _ = Task.Run(async () => await ProcessTtsAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to trigger TTS");
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = "Failed to trigger TTS"
+            });
+        }
+    }
+
+    private async Task ProcessTtsAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Processing TTS workflow (Ctrl+F1) - delegating to TtsHotkeyHandler");
+            
+            // Delegate TTS processing to the dedicated TTS handler
+            await _ttsHotkeyHandler.HandleCtrlF1Async();
+            
+            // Fire completion event to indicate TTS was triggered
+            TranscriptionCompleted?.Invoke(this, new TranscriptionCompletedEventArgs
+            {
+                TranscriptionResult = new TranscriptionResult 
+                { 
+                    FullText = "🐱 KittenTTS clipboard reading initiated",
+                    Language = "en",
+                    Segments = new List<TranscriptionSegment>()
+                },
+                ProcessingTime = TimeSpan.FromMilliseconds(50)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "TTS processing failed: {Error}", ex.Message);
+            TranscriptionError?.Invoke(this, new TranscriptionErrorEventArgs
+            {
+                Exception = ex,
+                Message = $"TTS processing failed: {ex.Message}"
             });
         }
     }

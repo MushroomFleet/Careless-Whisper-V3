@@ -746,7 +746,10 @@ public class OpenRouterService : IOpenRouterService, IDisposable
         public string? ImagePriceString { get; set; }
         
         // Helper properties to convert string prices to decimals
+        [JsonIgnore]
         public decimal Prompt => decimal.TryParse(PromptPriceString, out var result) ? result : 0m;
+        
+        [JsonIgnore]
         public decimal Completion => decimal.TryParse(CompletionPriceString, out var result) ? result : 0m;
     }
     
