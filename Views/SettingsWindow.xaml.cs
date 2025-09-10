@@ -13,8 +13,13 @@ using CarelessWhisperV2.Services.Ollama;
 using CarelessWhisperV2.Services.Environment;
 using CarelessWhisperV2.Services.AudioNotification;
 using CarelessWhisperV2.Services.Network;
+using CarelessWhisperV2.Services.Tts;
+using CarelessWhisperV2.Services.Python;
+using CarelessWhisperV2.Services.Clipboard;
+using CarelessWhisperV2.Services.Vision;
 using SharpHook.Native;
 using Microsoft.Win32;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CarelessWhisperV2.Views;
 
@@ -27,12 +32,18 @@ public partial class SettingsWindow : Window
     private readonly IOllamaService _ollamaService;
     private readonly IEnvironmentService _environmentService;
     private readonly IAudioNotificationService _audioNotificationService;
+    private readonly ITtsEngine _ttsEngine;
+    private readonly PythonEnvironmentManager _pythonManager;
+    private readonly IClipboardService _clipboardService;
+    private readonly IVisionProcessingService _visionProcessingService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<SettingsWindow> _logger;
     private ApplicationSettings _settings;
     private string _capturedHotkey = "";
     private string _capturedLlmHotkey = "";
     private List<OpenRouterModel> _availableModels = new();
     private List<OllamaModel> _availableOllamaModels = new();
+    private List<OpenRouterModel> _availableVisionModels = new();
 
     public SettingsWindow(
         ISettingsService settingsService, 
@@ -42,6 +53,11 @@ public partial class SettingsWindow : Window
         IOllamaService ollamaService,
         IEnvironmentService environmentService,
         IAudioNotificationService audioNotificationService,
+        ITtsEngine ttsEngine,
+        PythonEnvironmentManager pythonManager,
+        IClipboardService clipboardService,
+        IVisionProcessingService visionProcessingService,
+        IServiceProvider serviceProvider,
         ILogger<SettingsWindow> logger)
     {
         InitializeComponent();
@@ -52,6 +68,11 @@ public partial class SettingsWindow : Window
         _ollamaService = ollamaService;
         _environmentService = environmentService;
         _audioNotificationService = audioNotificationService;
+        _ttsEngine = ttsEngine;
+        _pythonManager = pythonManager;
+        _clipboardService = clipboardService;
+        _visionProcessingService = visionProcessingService;
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _settings = new ApplicationSettings();
 
@@ -104,10 +125,12 @@ public partial class SettingsWindow : Window
             .FirstOrDefault(item => item.Tag?.ToString() == _settings.Whisper.Language);
         EnableGpuCheckBox.IsChecked = _settings.Whisper.EnableGpuAcceleration;
         
-        // Load OpenRouter, Ollama, and Audio Notification settings
+        // Load OpenRouter, Ollama, Audio Notification, TTS, and Vision settings
         await LoadOpenRouterSettings();
         await LoadOllamaSettings();
         LoadAudioNotificationSettings();
+        await LoadTtsSettings();
+        await LoadVisionSettings();
     }
 
     private async Task LoadOpenRouterSettings()
@@ -1197,43 +1220,401 @@ public partial class SettingsWindow : Window
         _settings.AudioNotification.AudioFilePath = AudioFilePathTextBox.Text;
         _settings.AudioNotification.Volume = VolumeSlider.Value;
 
-        // Vision V3.6.3 Settings
-        _settings.Vision.SystemPrompt = VisionSystemPromptTextBox.Text;
-        _settings.Vision.MaxTokens = int.Parse(VisionMaxTokensTextBox.Text);
-        _settings.Vision.ImageQuality = (int)ImageQualitySlider.Value;
-    }
-
-    // Vision Tab Event Handlers - NEW V3.6.3
-    private void PromptPresets_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        // This will be handled by the Apply button - no immediate action needed
-    }
-
-    private void ApplyPreset_Click(object sender, RoutedEventArgs e)
-    {
-        if (PromptPresetsComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag != null)
+        // TTS V3.6.5 Settings
+        _settings.Tts.EnableTts = EnableTtsCheckBox.IsChecked ?? true;
+        _settings.Tts.SpeechSpeed = (float)TtsSpeechSpeedSlider.Value;
+        _settings.Tts.Volume = (float)TtsVolumeSlider.Value;
+        _settings.Tts.MaxTextLength = int.Parse(TtsMaxTextLengthTextBox.Text);
+        _settings.Tts.UseFallbackSapi = TtsUseFallbackSapiCheckBox.IsChecked ?? true;
+        
+        // Save selected TTS voice
+        if (TtsVoiceComboBox.SelectedItem is ComboBoxItem selectedTtsVoiceItem && selectedTtsVoiceItem.Tag != null)
         {
-            var presetPrompt = selectedItem.Tag.ToString();
-            VisionSystemPromptTextBox.Text = presetPrompt;
-            
-            _logger.LogInformation("Applied vision prompt preset: {Preset}", selectedItem.Content);
+            _settings.Tts.SelectedVoice = selectedTtsVoiceItem.Tag.ToString() ?? "expr-voice-2-f";
+        }
+
+        // Vision V3.6.3 Settings
+        _settings.Vision.EnableVisionCapture = EnableVisionCheckBox.IsChecked ?? true;
+        _settings.Vision.SystemPrompt = VisionSystemPromptTextBox.Text;
+        
+        // Save image processing settings
+        var imageSizeTag = ((ComboBoxItem)VisionImageSizeComboBox.SelectedItem)?.Tag?.ToString() ?? "1024";
+        _settings.Vision.ImageQuality = int.Parse(imageSizeTag) >= 1536 ? 95 : 85; // Higher quality for larger images
+        
+        // Save selected Vision model
+        if (VisionModelComboBox.SelectedItem is ComboBoxItem selectedVisionModelItem && selectedVisionModelItem.Tag != null)
+        {
+            _settings.Vision.SelectedVisionModel = selectedVisionModelItem.Tag.ToString() ?? "";
         }
     }
 
-    private void TestVisionCapture_Click(object sender, RoutedEventArgs e)
+    // TTS Event Handlers
+    private async Task LoadTtsSettings()
     {
         try
         {
-            MessageBox.Show("Test Vision Capture:\n\n" +
-                           "1. Press Shift+F3 to test immediate vision capture\n" +
-                           "2. Press Ctrl+F3 to test speech + vision capture\n\n" +
-                           "Results will use your current vision prompt settings and be copied to clipboard.",
-                           "Vision Capture Test",
-                           MessageBoxButton.OK, MessageBoxImage.Information);
+            EnableTtsCheckBox.IsChecked = _settings.Tts.EnableTts;
+            TtsSpeechSpeedSlider.Value = _settings.Tts.SpeechSpeed;
+            TtsSpeechSpeedValueTextBlock.Text = $"{_settings.Tts.SpeechSpeed:F1}x";
+            TtsVolumeSlider.Value = _settings.Tts.Volume;
+            TtsVolumeValueTextBlock.Text = $"{_settings.Tts.Volume * 100:F0}%";
+            TtsMaxTextLengthTextBox.Text = _settings.Tts.MaxTextLength.ToString();
+            TtsUseFallbackSapiCheckBox.IsChecked = _settings.Tts.UseFallbackSapi;
+
+            // Load available voices
+            await LoadTtsVoices();
+            
+            // Update Python status - but don't trigger initialization during settings load
+            await RefreshTtsStatusLazy();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to show vision capture test dialog");
+            _logger.LogError(ex, "Failed to load TTS settings");
+        }
+    }
+
+    private async Task LoadTtsVoices()
+    {
+        try
+        {
+            TtsVoiceComboBox.Items.Clear();
+            var voices = _ttsEngine.GetAvailableVoices();
+            
+            foreach (var voice in voices)
+            {
+                var item = new ComboBoxItem
+                {
+                    Content = voice.Description,
+                    Tag = voice.Id
+                };
+                TtsVoiceComboBox.Items.Add(item);
+                
+                if (voice.Id == _settings.Tts.SelectedVoice)
+                {
+                    TtsVoiceComboBox.SelectedItem = item;
+                }
+            }
+            
+            // If no voice is selected, select the first one
+            if (TtsVoiceComboBox.SelectedItem == null && TtsVoiceComboBox.Items.Count > 0)
+            {
+                TtsVoiceComboBox.SelectedIndex = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load TTS voices");
+        }
+    }
+
+    private void TtsVoiceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (TtsVoiceComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag != null)
+        {
+            var voiceId = selectedItem.Tag.ToString();
+            var voices = _ttsEngine.GetAvailableVoices();
+            var selectedVoice = voices.FirstOrDefault(v => v.Id == voiceId);
+            
+            if (selectedVoice != null)
+            {
+                TtsVoiceNameTextBlock.Text = selectedVoice.Description;
+                TtsVoiceDescriptionTextBlock.Text = $"Gender: {selectedVoice.Gender}, Language: {selectedVoice.Language}";
+                TtsVoiceDetailsTextBlock.Text = "KittenTTS neural voice with expressive capabilities";
+            }
+        }
+    }
+
+    private void TtsSpeechSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (TtsSpeechSpeedValueTextBlock != null)
+        {
+            TtsSpeechSpeedValueTextBlock.Text = $"{e.NewValue:F1}x";
+        }
+    }
+
+    private void TtsVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (TtsVolumeValueTextBlock != null)
+        {
+            TtsVolumeValueTextBlock.Text = $"{e.NewValue * 100:F0}%";
+        }
+    }
+
+    private async void RefreshTtsStatus_Click(object sender, RoutedEventArgs e)
+    {
+        await RefreshTtsStatus();
+    }
+
+    private async Task RefreshTtsStatus()
+    {
+        try
+        {
+            RefreshTtsStatusButton.IsEnabled = false;
+            TtsPythonStatusTextBlock.Text = "Checking Python environment...";
+            
+            // Check Python availability
+            var pythonAvailable = await _pythonManager.InitializeAsync();
+            if (pythonAvailable)
+            {
+                TtsPythonStatusTextBlock.Text = "Python environment: Available";
+                TtsPythonStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+            }
+            else
+            {
+                TtsPythonStatusTextBlock.Text = "Python environment: Not available";
+                TtsPythonStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            }
+            
+            // Check KittenTTS availability
+            var kittenTtsAvailable = await _ttsEngine.IsAvailableAsync();
+            if (kittenTtsAvailable)
+            {
+                TtsKittenStatusTextBlock.Text = "KittenTTS: Available and ready";
+                TtsKittenStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+            }
+            else
+            {
+                TtsKittenStatusTextBlock.Text = "KittenTTS: Not available, will use SAPI fallback";
+                TtsKittenStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+            }
+            
+            // Update engine status
+            TtsEngineStatusTextBlock.Text = $"Engine: {_ttsEngine.EngineInfo}";
+            TtsEngineStatusTextBlock.Foreground = System.Windows.Media.Brushes.Blue;
+            
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh TTS status");
+            TtsPythonStatusTextBlock.Text = "Status check failed";
+            TtsPythonStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+        }
+        finally
+        {
+            RefreshTtsStatusButton.IsEnabled = true;
+        }
+    }
+
+    private async Task RefreshTtsStatusLazy()
+    {
+        try
+        {
+            // Don't trigger Python initialization during settings load - just show status based on current state
+            if (_pythonManager.IsInitialized)
+            {
+                TtsPythonStatusTextBlock.Text = "Python environment: Available";
+                TtsPythonStatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+            }
+            else
+            {
+                TtsPythonStatusTextBlock.Text = "Python environment: Not initialized (click Refresh to check)";
+                TtsPythonStatusTextBlock.Foreground = System.Windows.Media.Brushes.Orange;
+            }
+            
+            // Update engine status without triggering initialization
+            TtsEngineStatusTextBlock.Text = $"Engine: {_ttsEngine.EngineInfo}";
+            TtsEngineStatusTextBlock.Foreground = System.Windows.Media.Brushes.Blue;
+            
+            // Show generic status for KittenTTS without checking availability
+            TtsKittenStatusTextBlock.Text = "KittenTTS: Status unknown (click Refresh to check)";
+            TtsKittenStatusTextBlock.Foreground = System.Windows.Media.Brushes.Gray;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh TTS status lazily");
+            TtsPythonStatusTextBlock.Text = "Status display failed";
+            TtsPythonStatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+        }
+    }
+
+    private async void TestTts_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            TestTtsButton.IsEnabled = false;
+            
+            // Set clipboard with test text
+            var testText = "This is a KittenTTS test. The text-to-speech system is working correctly.";
+            await _clipboardService.SetTextAsync(testText);
+            
+            // Generate TTS with current settings
+            var options = new TtsOptions
+            {
+                Speed = (float)TtsSpeechSpeedSlider.Value,
+                OutputFormat = TtsOutputFormat.Wav
+            };
+            
+            var selectedVoiceId = ((ComboBoxItem)TtsVoiceComboBox.SelectedItem)?.Tag?.ToString() ?? "expr-voice-2-f";
+            var result = await _ttsEngine.GenerateAudioAsync(testText, options);
+            
+            if (result.Success)
+            {
+                // Play the audio
+                var audioPlayback = _serviceProvider.GetRequiredService<IAudioPlaybackService>();
+                audioPlayback.Volume = (float)TtsVolumeSlider.Value;
+                await audioPlayback.PlayAudioAsync(result.AudioData, CancellationToken.None);
+                
+                MessageBox.Show("TTS test completed successfully!", "TTS Test", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show($"TTS test failed: {result.ErrorMessage}", "TTS Test Failed", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "TTS test failed");
+            MessageBox.Show($"TTS test failed: {ex.Message}", "TTS Test Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            TestTtsButton.IsEnabled = true;
+        }
+    }
+
+    // Vision Event Handlers
+    private async Task LoadVisionSettings()
+    {
+        try
+        {
+            EnableVisionCheckBox.IsChecked = _settings.Vision.EnableVisionCapture;
+            VisionSystemPromptTextBox.Text = _settings.Vision.SystemPrompt;
+            
+            // Load image size based on quality setting
+            var imageSizeTag = _settings.Vision.ImageQuality >= 95 ? "1536" : "1024";
+            VisionImageSizeComboBox.SelectedItem = VisionImageSizeComboBox.Items.Cast<ComboBoxItem>()
+                .FirstOrDefault(item => item.Tag?.ToString() == imageSizeTag);
+            
+            // Set quality setting
+            VisionImageQualityComboBox.SelectedItem = VisionImageQualityComboBox.Items.Cast<ComboBoxItem>()
+                .FirstOrDefault(item => item.Tag?.ToString() == (_settings.Vision.ImageQuality >= 95 ? "high" : "balanced"));
+                
+            VisionShowPreviewCheckBox.IsChecked = true; // Default to enabled
+            VisionAutoClipboardCheckBox.IsChecked = true; // Default to enabled
+
+            // Load available vision models
+            await LoadVisionModels();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load Vision settings");
+        }
+    }
+
+    private async Task LoadVisionModels()
+    {
+        try
+        {
+            VisionModelComboBox.Items.Clear();
+            
+            // Get available vision models from OpenRouter
+            _availableVisionModels = await _openRouterService.GetAvailableVisionModelsAsync();
+            
+            foreach (var model in _availableVisionModels)
+            {
+                var item = new ComboBoxItem
+                {
+                    Content = $"{model.Name}",
+                    Tag = model.Id
+                };
+                VisionModelComboBox.Items.Add(item);
+                
+                if (model.Id == _settings.Vision.SelectedVisionModel)
+                {
+                    VisionModelComboBox.SelectedItem = item;
+                }
+            }
+            
+            // If no model is selected, try to select a default vision model
+            if (VisionModelComboBox.SelectedItem == null && VisionModelComboBox.Items.Count > 0)
+            {
+                // Try to find Claude or GPT-4 Vision first
+                var preferredModel = VisionModelComboBox.Items.Cast<ComboBoxItem>()
+                    .FirstOrDefault(item => item.Tag?.ToString()?.Contains("claude") == true ||
+                                          item.Tag?.ToString()?.Contains("gpt-4") == true ||
+                                          item.Tag?.ToString()?.Contains("vision") == true);
+                                          
+                if (preferredModel != null)
+                {
+                    VisionModelComboBox.SelectedItem = preferredModel;
+                }
+                else
+                {
+                    VisionModelComboBox.SelectedIndex = 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load Vision models");
+        }
+    }
+
+    private void VisionModelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (VisionModelComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag != null)
+        {
+            var modelId = selectedItem.Tag.ToString();
+            var selectedModel = _availableVisionModels.FirstOrDefault(v => v.Id == modelId);
+            
+            if (selectedModel != null)
+            {
+                VisionModelNameTextBlock.Text = selectedModel.Name;
+                VisionModelDescriptionTextBlock.Text = selectedModel.Description;
+                VisionModelDetailsTextBlock.Text = $"Pricing: ${selectedModel.PricePerMToken}/1M tokens, Context: {selectedModel.ContextLength:N0} tokens";
+            }
+        }
+    }
+
+    private async void RefreshVisionModels_Click(object sender, RoutedEventArgs e)
+    {
+        await LoadVisionModels();
+    }
+
+    private async void TestVisionCapture_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            TestVisionCaptureButton.IsEnabled = false;
+            
+            MessageBox.Show("The screen will be captured for vision analysis in 3 seconds. Position any content you want analyzed on your screen.", 
+                           "Vision Test", MessageBoxButton.OK, MessageBoxImage.Information);
+            
+            // Small delay to let user position content
+            await Task.Delay(3000);
+            
+            // Test vision capture using the service
+            var result = await _visionProcessingService.CaptureAndAnalyzeAsync(null);
+            
+            if (!string.IsNullOrEmpty(result) && result != "Vision analysis failed: No screen area selected.")
+            {
+                var message = $"Vision test completed successfully!\n\nAnalysis result:\n{result.Substring(0, Math.Min(500, result.Length))}";
+                if (result.Length > 500)
+                {
+                    message += "...";
+                }
+                
+                MessageBox.Show(message, "Vision Test Success", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show("Vision test failed or was cancelled. Please ensure a vision-capable model is selected in OpenRouter/Ollama settings.", 
+                               "Vision Test Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Vision test failed");
+            MessageBox.Show($"Vision test failed: {ex.Message}", "Vision Test Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            TestVisionCaptureButton.IsEnabled = true;
         }
     }
 
