@@ -20,7 +20,7 @@ Transform your voice into text instantly, get AI-powered responses, combine clip
 
 **What you get:**
 - ⚡ **Instant Setup** - Single portable executable, no installer needed
-- 🐱 **Neural TTS Included** - 277MB total with embedded CarelessKitten TTS
+- 🐱 **SAPI TTS Included** - Windows TTS, lightweight solution
 - 🛡️ **Local AI Processing** - Whisper.net keeps your voice private
 - 🔧 **Just Need .NET 8.0** - Free Microsoft runtime (quick install)
 
@@ -480,4 +480,5 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 
 
 *V3.7.0: Where voice meets intelligence with TTS - Care Less, Achieve More.*
+
 
