@@ -13,6 +13,7 @@ using CarelessWhisperV2.Services.Ollama;
 using CarelessWhisperV2.Services.Environment;
 using CarelessWhisperV2.Services.AudioNotification;
 using CarelessWhisperV2.Services.Network;
+using CarelessWhisperV2.Services.TTS;
 using SharpHook.Native;
 using Microsoft.Win32;
 
@@ -27,6 +28,7 @@ public partial class SettingsWindow : Window
     private readonly IOllamaService _ollamaService;
     private readonly IEnvironmentService _environmentService;
     private readonly IAudioNotificationService _audioNotificationService;
+    private readonly ITTSService _ttsService;
     private readonly ILogger<SettingsWindow> _logger;
     private ApplicationSettings _settings;
     private string _capturedHotkey = "";
@@ -42,6 +44,7 @@ public partial class SettingsWindow : Window
         IOllamaService ollamaService,
         IEnvironmentService environmentService,
         IAudioNotificationService audioNotificationService,
+        ITTSService ttsService,
         ILogger<SettingsWindow> logger)
     {
         InitializeComponent();
@@ -52,6 +55,7 @@ public partial class SettingsWindow : Window
         _ollamaService = ollamaService;
         _environmentService = environmentService;
         _audioNotificationService = audioNotificationService;
+        _ttsService = ttsService;
         _logger = logger;
         _settings = new ApplicationSettings();
 
@@ -1234,6 +1238,139 @@ public partial class SettingsWindow : Window
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to show vision capture test dialog");
+        }
+    }
+
+    // TTS Event Handlers - NEW
+    private List<VoiceInfo> _availableVoices = new();
+
+    private async void RefreshVoices_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            RefreshVoicesButton.IsEnabled = false;
+            await LoadAvailableVoices();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh voices");
+            MessageBox.Show($"Failed to refresh voices: {ex.Message}", "Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            RefreshVoicesButton.IsEnabled = true;
+        }
+    }
+
+    private async Task LoadAvailableVoices()
+    {
+        try
+        {
+            VoiceComboBox.Items.Clear();
+            _availableVoices = (await _ttsService.GetAvailableVoicesAsync()).ToList();
+
+            // Add default option
+            var defaultItem = new ComboBoxItem
+            {
+                Content = "System Default",
+                Tag = ""
+            };
+            VoiceComboBox.Items.Add(defaultItem);
+
+            // Add available voices
+            foreach (var voice in _availableVoices)
+            {
+                var item = new ComboBoxItem
+                {
+                    Content = $"{voice.Name} ({voice.Gender}, {voice.Culture})",
+                    Tag = voice.Name
+                };
+                VoiceComboBox.Items.Add(item);
+            }
+
+            // Select stored voice or default
+            if (string.IsNullOrEmpty(_settings.TTS.SelectedVoice))
+            {
+                VoiceComboBox.SelectedItem = defaultItem;
+            }
+            else
+            {
+                var storedVoiceItem = VoiceComboBox.Items.Cast<ComboBoxItem>()
+                    .FirstOrDefault(item => item.Tag?.ToString() == _settings.TTS.SelectedVoice);
+                VoiceComboBox.SelectedItem = storedVoiceItem ?? defaultItem;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load available voices");
+        }
+    }
+
+    private void VoiceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // Update settings immediately when voice changes
+        if (_settings?.TTS != null && VoiceComboBox.SelectedItem is ComboBoxItem selectedItem)
+        {
+            _settings.TTS.SelectedVoice = selectedItem.Tag?.ToString() ?? "";
+        }
+    }
+
+    private void SpeechRateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        // Update settings immediately when rate changes
+        if (_settings?.TTS != null)
+        {
+            _settings.TTS.Rate = (int)e.NewValue;
+        }
+    }
+
+    private void SpeechVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (SpeechVolumeValueTextBlock != null)
+        {
+            SpeechVolumeValueTextBlock.Text = $"{e.NewValue:F0}%";
+        }
+
+        // Update settings immediately when volume changes
+        if (_settings?.TTS != null)
+        {
+            _settings.TTS.Volume = (int)e.NewValue;
+        }
+    }
+
+    private async void TestVoice_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            TestVoiceButton.IsEnabled = false;
+            
+            // Configure TTS with current settings
+            var selectedVoice = "";
+            if (VoiceComboBox.SelectedItem is ComboBoxItem voiceItem && voiceItem.Tag != null)
+            {
+                selectedVoice = voiceItem.Tag.ToString() ?? "";
+            }
+
+            if (!string.IsNullOrEmpty(selectedVoice))
+            {
+                await _ttsService.SetVoiceAsync(selectedVoice);
+            }
+            await _ttsService.SetRateAsync((int)SpeechRateSlider.Value);
+            await _ttsService.SetVolumeAsync((int)SpeechVolumeSlider.Value);
+
+            // Test with a sample phrase
+            await _ttsService.SpeakTextAsync("Hello, this is a test of the selected voice settings.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Voice test failed");
+            MessageBox.Show($"Voice test failed: {ex.Message}", "TTS Test Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            TestVoiceButton.IsEnabled = true;
         }
     }
 
