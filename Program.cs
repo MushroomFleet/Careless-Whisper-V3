@@ -15,6 +15,7 @@ using CarelessWhisperV2.Services.OpenRouter;
 using CarelessWhisperV2.Services.Ollama;
 using CarelessWhisperV2.Services.AudioNotification;
 using CarelessWhisperV2.Services.Cache;
+using CarelessWhisperV2.Services.TTS;
 
 namespace CarelessWhisperV2;
 
@@ -88,6 +89,9 @@ public class Program
             builder.Services.AddSingleton<IOpenRouterService, OpenRouterService>();
             builder.Services.AddSingleton<IOllamaService, OllamaService>();
             builder.Services.AddSingleton<IAudioNotificationService, AudioNotificationService>();
+            
+            // TTS service
+            builder.Services.AddSingleton<ITTSService, SAPITTSService>();
             
             // V3.6.3 Vision services
             builder.Services.AddSingleton<CarelessWhisperV2.Services.ScreenCapture.IScreenCaptureService, CarelessWhisperV2.Services.ScreenCapture.BitBltScreenCaptureService>();

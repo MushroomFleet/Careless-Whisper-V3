@@ -2,19 +2,19 @@
 
 **"Care Less" - Inobtrusive Augments!**
 
-**Triple-Mode Voice-to-Text & AI Assistant for Windows** • Silent system tray interface • Built with .NET 8.0
+**Multi-Modal Voice-to-Text, AI Assistant & TTS for Windows** • Silent system tray interface • Built with .NET 8.0
 
-Transform your voice into text instantly, get AI-powered responses, or combine clipboard content with voice prompts—all with simple hotkeys. No windows, no interruptions—just speak and get results anywhere.
+Transform your voice into text instantly, get AI-powered responses, combine clipboard content with voice prompts, analyze images, or have any text read aloud—all with simple hotkeys. No windows, no interruptions—just speak, see, and listen anywhere.
 
 **4/9/25:** [Careless-Canvas-NML](https://github.com/MushroomFleet/Careless-Canvas-NML)
 - Specially designed infinite canvas for your pastes 
 - takes advantage of NML (nested markup language) to save your work.
 
-## 🚀 Get Started Now - Download V3.6
+## 🚀 Get Started Now - Download V3.7
 
 **Ready to boost your productivity?** 
 
-👉 **[Download Latest Portable Release (v3.6.2)](../../releases/latest)**
+👉 **[Download Latest Portable Release (v3.7.0)](../../releases/latest)**
 
 **What you get:**
 - ⚡ **Instant Setup** - Single portable executable, no installer needed
@@ -28,12 +28,13 @@ Extract, double-click, and start speaking! The app lives silently in your system
 
 ## ✨ Core Features
 
-### 🎙️ Quintuple Hotkey System
+### 🎙️ Sextuple Hotkey System
 - **F1**: **Speech-to-Text** → Hold, speak, release → Instant paste
 - **Shift+F2**: **Speech-Prompt-to-AI** → Voice your question → Get AI response pasted
 - **Ctrl+F2**: **Speech Copy Prompt to Paste** → Combines clipboard content with voice prompt → AI processes both together
 - **Shift+F3**: **Vision Capture** → Select screen area → AI describes image → Instant paste
 - **Ctrl+F3**: **Speech + Vision** → Hold, speak, release → Select screen area → AI analyzes both → Paste result
+- **Ctrl+F1**: **Clipboard Text-to-Speech** → Instantly reads clipboard content aloud → Press Escape to stop
 
 ### 📝 Speech Copy Prompt to Paste (NEW in v3.6.2)
 - **Intelligent Clipboard Integration**: Automatically captures existing clipboard content when Ctrl+F2 is pressed
@@ -50,6 +51,16 @@ Extract, double-click, and start speaking! The app lives silently in your system
 - **Vision Model Integration**: Uses your selected LLM provider's vision models (Claude 3, GPT-4 Vision, LLaVA, etc.)
 - **Customizable Prompts**: Configure default analysis behavior or use preset prompts for common tasks
 - **Fast Capture Performance**: ~30ms screen capture using optimized BitBlt API
+
+### 🔊 Text-to-Speech (NEW in v3.7.0)
+- **Instant Clipboard Reading**: Press Ctrl+F1 to have any clipboard text read aloud instantly
+- **Windows SAPI Integration**: Uses built-in Windows speech synthesis - no external dependencies
+- **Voice Selection**: Choose from all available Windows voices with live preview
+- **Customizable Speech**: Adjust rate (slow to fast) and volume (0-100%) to your preference
+- **Escape to Stop**: Press Escape key anytime to immediately halt speech playback
+- **Portable & Lightweight**: No additional libraries needed - uses Windows native speech engine
+- **Perfect for Accessibility**: Audio feedback for any copied text content
+- **Multitasking Support**: Listen to long documents while working on other tasks
 
 ### 🤖 Dual AI Integration - Local & Cloud
 - **OpenRouter API**: Access to **300+ cutting-edge cloud models** (GPT-4, Claude, Gemini, etc.)
@@ -101,6 +112,15 @@ Extract, double-click, and start speaking! The app lives silently in your system
 - **Document Processing**: Copy paragraphs → Voice instructions → Get summaries/translations
 - **Data Analysis**: Copy spreadsheet data → Voice queries → Get insights
 - **Email Assistance**: Copy draft emails → Voice refinements → Get professional versions
+
+### Text-to-Speech Integration (Ctrl+F1)
+- **Document Review**: Copy long articles → Audio playback while multitasking
+- **Accessibility**: Audio feedback for users with visual impairments
+- **Language Learning**: Copy foreign text → Hear pronunciation using Windows multilingual voices
+- **Proofreading**: Copy drafts → Listen for flow and tone issues
+- **Multitasking**: Copy emails/reports → Listen while doing other work
+- **Code Review**: Copy documentation → Audio review during development
+- **Research**: Copy papers/studies → Audio consumption for better retention
 
 ## 📋 Prerequisites
 
@@ -170,12 +190,22 @@ Right-click the system tray icon to access comprehensive settings:
 - **Vision Model Compatibility**: Real-time validation of selected model's vision capabilities
 - **Test Integration**: Built-in test functionality to verify screen capture and AI analysis
 
+### Text-to-Speech (NEW in v3.7.0)
+- **Voice Selection**: Choose from all available Windows SAPI voices with live preview
+- **Speech Rate Control**: Adjust speed from slow (-10) to fast (+10), with 0 as normal speed
+- **Volume Control**: Set speech volume from 0% to 100% with real-time feedback
+- **Enable/Disable Toggle**: Turn TTS functionality on or off as needed
+- **Voice Testing**: Test button to preview selected voice with sample phrase
+- **Instant Configuration**: Settings applied immediately without restart
+- **SAPI Integration**: Uses Windows native speech engine - no external dependencies required
+
 ## 🔧 Technical Details
 
 ### Architecture
 - **Framework**: Clean .NET 8.0 with dependency injection
 - **Audio Processing**: NAudio for high-quality recording
 - **Speech Recognition**: Whisper.NET with GGML weights (120MB total)
+- **Text-to-Speech**: Windows SAPI (Speech API) - native integration, zero dependencies
 - **Global Hotkeys**: SharpHook for system-wide key detection
 - **AI Integration**: Dual provider system - OpenRouter API (300+ cloud models) + Ollama (local models)
 - **Secure Storage**: Windows DPAPI for API key encryption
@@ -216,9 +246,10 @@ Requires .NET 8.0 SDK for development.
 
 ## 🔐 Privacy & Security
 
-### Local Processing (Speech-to-Text)
-- **No internet required**: All transcription happens locally via Whisper
+### Local Processing (Speech-to-Text & TTS)
+- **No internet required**: All transcription and speech synthesis happens locally
 - **No data collection**: Your voice never leaves your computer
+- **Windows SAPI**: TTS uses built-in Windows voices - no external services
 - **Optional logging**: Transcription history saved locally (can be disabled)
 
 ### Cloud Processing (AI Features)
@@ -234,12 +265,13 @@ Requires .NET 8.0 SDK for development.
 
 ## 📝 Status
 
-**Current Version**: **3.6.3** - Latest stable release with Vision Analysis
+**Current Version**: **3.7.0** - Latest stable release with TTS Integration
 
 ✅ **Working**: 
-- **Quintuple-mode processing** (local speech + AI + clipboard + vision integration)
+- **Sextuple-mode processing** (local speech + AI + clipboard + vision + TTS integration)
 - **AI Vision Analysis** with drag-to-select screen capture and intelligent image processing
-- Complete settings UI with Vision configuration tab
+- **Clipboard Text-to-Speech** with Windows SAPI integration and voice customization
+- Complete settings UI with Vision and TTS configuration tabs
 - Secure OpenRouter integration with **300+ models** including vision models
 - **Ollama local AI integration** with full API support
 - **Speech Copy Prompt to Paste** feature with clipboard integration
@@ -247,13 +279,19 @@ Requires .NET 8.0 SDK for development.
 - **Revived transcription history** with search and management
 - Enhanced transcription with multiple Whisper models
 
+🎯 **V3.7.0 Achievements**:
+- **Clipboard Text-to-Speech**: New Ctrl+F1 hotkey for instant audio feedback of clipboard content
+- **Windows SAPI Integration**: Native speech synthesis with no external dependencies
+- **Customizable Voice Control**: Full voice selection, rate, and volume configuration with instant preview
+- **Accessibility Enhancement**: Audio feedback for any copied text using Windows native voices
+- **Escape Key Control**: Instant speech cancellation for user control
+
 🎯 **V3.6.3 Achievements**:
 - **AI Vision Analysis**: Revolutionary Shift+F3 and Ctrl+F3 hotkeys for screen capture and image analysis
 - **Drag-to-Select Interface**: Professional overlay system with visual feedback and multi-monitor support
 - **Speech + Vision Fusion**: Ctrl+F3 combines voice transcription with image analysis for comprehensive understanding
 - **Vision Model Integration**: Seamless compatibility with Claude 3, GPT-4 Vision, LLaVA, and other vision models
 - **Smart Image Processing**: Token-aware optimization and format detection for maximum API efficiency
-- **Customizable Vision Prompts**: Full user control over analysis behavior with preset options
 - **Fast Performance**: ~30ms screen capture with optimized BitBlt implementation
 
 🎯 **V3.6.2 Achievements**:
@@ -313,6 +351,18 @@ Requires .NET 8.0 SDK for development.
 - **Hold Ctrl+F3**: "Convert this to markdown" → **Release** → **Drag** formatted text → Get markdown conversion
 - **Hold Ctrl+F3**: "What's the sentiment of this content?" → **Release** → **Drag** social media post → Get sentiment analysis
 
+### Text-to-Speech (Ctrl+F1) Examples
+- **Copy article text** → **Ctrl+F1** → Listen while commuting or multitasking
+- **Copy email draft** → **Ctrl+F1** → Hear how it sounds for tone and flow
+- **Copy code documentation** → **Ctrl+F1** → Audio review while coding
+- **Copy meeting agenda** → **Ctrl+F1** → Listen to preparation notes hands-free
+- **Copy language learning text** → **Ctrl+F1** → Hear pronunciation and rhythm
+- **Copy research paper** → **Ctrl+F1** → Audio study session for better retention
+- **Copy error logs** → **Ctrl+F1** → Listen to debug info while investigating
+- **Copy spreadsheet data** → **Ctrl+F1** → Audio verification of numbers and entries
+- **Copy chat messages** → **Ctrl+F1** → Hear long message threads while working
+- **Copy foreign text** → **Ctrl+F1** → Use Windows multilingual voices for pronunciation
+
 ## 📋 Step-by-Step Workflow Guides
 
 ### Quick Vision Analysis (Shift+F3)
@@ -341,6 +391,23 @@ Requires .NET 8.0 SDK for development.
 4. **Adjust image quality** - Balance between speed and vision model accuracy
 5. **Test functionality** - Built-in test button to verify vision capture works
 
+### Clipboard Text-to-Speech (Ctrl+F1)
+1. **Copy any text** - From any application (Ctrl+C or right-click copy)
+2. **Press Ctrl+F1** - Instant speech synthesis begins
+3. **Listen** - Text is read aloud using your configured voice and settings
+4. **Press Escape** - Stop speech immediately if needed
+5. **Continue working** - Audio plays in background while you multitask
+
+*Perfect for: Document review, email proofreading, accessibility, language learning, multitasking*
+
+### TTS Settings Configuration
+1. **Right-click tray icon** → **Settings** → **Text-to-Speech tab**
+2. **Select voice** - Choose from all available Windows SAPI voices
+3. **Adjust speech rate** - Slide from slow (-10) to fast (+10), 0 is normal
+4. **Set volume** - Control speech volume from 0% to 100%
+5. **Test voice** - Preview settings with sample phrase
+6. **Save settings** - Voice preferences persist between sessions
+
 ## 🤝 Contributing
 
 This project implements production-ready .NET 8.0 patterns with comprehensive V3.0 architecture. See [docs/devteam-handoff-v3-final.md](docs/devteam-handoff-v3-final.md) for complete technical documentation.
@@ -353,4 +420,4 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 
 **Made for developers, writers, and anyone who wants both instant transcription AND AI assistance at their fingertips.**
 
-*V3.6.2: Where voice meets intelligence - Care Less, Achieve More.*
+*V3.7.0: Where voice meets intelligence with TTS - Care Less, Achieve More.*
