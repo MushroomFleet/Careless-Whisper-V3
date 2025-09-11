@@ -22,7 +22,9 @@ public class ApplicationSettings : IValidatableObject
     public OllamaSettings Ollama { get; set; } = new(); // NEW
     public AudioNotificationSettings AudioNotification { get; set; } = new(); // NEW
     public VisionSettings Vision { get; set; } = new(); // NEW V3.6.3
-    public TtsConfiguration Tts { get; set; } = new(); // NEW V3.6.5
+
+    public TTSSettings TTS { get; set; } = new(); // NEW for Text-to-Speech
+
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -118,5 +120,22 @@ public class VisionSettings : IValidatableObject
             
         if (ImageQuality < 1 || ImageQuality > 100)
             yield return new ValidationResult("Image quality must be between 1 and 100");
+    }
+}
+
+public class TTSSettings : IValidatableObject
+{
+    public bool EnableTTS { get; set; } = true;
+    public string SelectedVoice { get; set; } = ""; // Empty means use system default
+    public int Rate { get; set; } = 0; // SAPI rate: -10 to 10, 0 is normal
+    public int Volume { get; set; } = 100; // SAPI volume: 0 to 100
+    
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Rate < -10 || Rate > 10)
+            yield return new ValidationResult("Speech rate must be between -10 and 10");
+            
+        if (Volume < 0 || Volume > 100)
+            yield return new ValidationResult("Speech volume must be between 0 and 100");
     }
 }

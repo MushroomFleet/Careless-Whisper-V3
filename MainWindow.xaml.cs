@@ -92,7 +92,7 @@ public partial class MainWindow : Window
                     var statusText = FindName("StatusText") as TextBlock;
                     if (statusText != null)
                     {
-                        statusText.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt";
+                        statusText.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt, Ctrl+F1: TTS";
                     }
                 });
                 _logger.LogInformation("Orchestrator ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt");
@@ -153,7 +153,7 @@ public partial class MainWindow : Window
                     var statusTextInner = FindName("StatusText") as TextBlock;
                     if (statusTextInner != null)
                     {
-                        statusTextInner.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt";
+                        statusTextInner.Text = "Ready - F1: Speech, Shift+F2: Prompt, Ctrl+F2: Copy+Prompt, Shift+F3: Vision, Ctrl+F3: Vision+Prompt, Ctrl+F1: TTS";
                     }
                 };
                 timer.Start();

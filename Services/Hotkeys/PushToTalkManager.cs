@@ -10,6 +10,7 @@ public class PushToTalkManager : IDisposable
     private readonly KeyCode _pushToTalkKey;
     private readonly KeyCode _llmPromptKey; // NEW
     private readonly KeyCode _visionCaptureKey; // NEW - F3 for vision capture
+    private readonly KeyCode _ttsKey; // NEW - F1 for TTS
     private readonly HashSet<KeyCode> _activeModifiers; // NEW
     private readonly ILogger<PushToTalkManager> _logger;
     private bool _isTransmitting;
@@ -31,7 +32,10 @@ public class PushToTalkManager : IDisposable
     public event Action? VisionCaptureEnded; // NEW - Shift+F3
     public event Action? VisionCaptureWithPromptStarted; // NEW - Ctrl+F3
     public event Action? VisionCaptureWithPromptEnded; // NEW - Ctrl+F3
-    public event Action? TtsTriggered; // NEW - Ctrl+F1 for TTS
+
+    public event Action? TTSTriggered; // NEW - Ctrl+F1 for clipboard TTS
+    public event Action? TTSStopRequested; // NEW - Escape to stop TTS
+
 
     public PushToTalkManager(
         ILogger<PushToTalkManager> logger, 
@@ -75,14 +79,16 @@ public class PushToTalkManager : IDisposable
             return;
         }
 
-        // Handle Ctrl+F1 (TTS - immediate trigger) - CHECK THIS FIRST!
+
+        // Handle Ctrl+F1 (TTS - immediate trigger, not PTT) - Check this FIRST
         if (e.Data.KeyCode == _pushToTalkKey && _activeModifiers.Contains(KeyCode.VcLeftControl))
         {
             _logger.LogDebug("TTS triggered (Ctrl+F1)");
-            TtsTriggered?.Invoke();
+            TTSTriggered?.Invoke();
             e.SuppressEvent = true;
         }
-        // Handle F1 (Speech to Paste) - only when Ctrl is NOT pressed
+        // Handle F1 (Speech to Paste) - Only if Ctrl is NOT pressed
+
         else if (e.Data.KeyCode == _pushToTalkKey && !_activeModifiers.Contains(KeyCode.VcLeftControl))
         {
             lock (_transmissionLock)
@@ -152,6 +158,13 @@ public class PushToTalkManager : IDisposable
                     VisionCaptureWithPromptStarted?.Invoke();
                 }
             }
+            e.SuppressEvent = true;
+        }
+        // Handle Escape key (Stop TTS - immediate trigger)
+        else if (e.Data.KeyCode == KeyCode.VcEscape)
+        {
+            _logger.LogDebug("TTS stop requested (Escape)");
+            TTSStopRequested?.Invoke();
             e.SuppressEvent = true;
         }
     }
