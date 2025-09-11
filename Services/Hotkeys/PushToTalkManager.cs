@@ -32,8 +32,10 @@ public class PushToTalkManager : IDisposable
     public event Action? VisionCaptureEnded; // NEW - Shift+F3
     public event Action? VisionCaptureWithPromptStarted; // NEW - Ctrl+F3
     public event Action? VisionCaptureWithPromptEnded; // NEW - Ctrl+F3
+
     public event Action? TTSTriggered; // NEW - Ctrl+F1 for clipboard TTS
     public event Action? TTSStopRequested; // NEW - Escape to stop TTS
+
 
     public PushToTalkManager(
         ILogger<PushToTalkManager> logger, 
@@ -77,6 +79,7 @@ public class PushToTalkManager : IDisposable
             return;
         }
 
+
         // Handle Ctrl+F1 (TTS - immediate trigger, not PTT) - Check this FIRST
         if (e.Data.KeyCode == _pushToTalkKey && _activeModifiers.Contains(KeyCode.VcLeftControl))
         {
@@ -85,6 +88,7 @@ public class PushToTalkManager : IDisposable
             e.SuppressEvent = true;
         }
         // Handle F1 (Speech to Paste) - Only if Ctrl is NOT pressed
+
         else if (e.Data.KeyCode == _pushToTalkKey && !_activeModifiers.Contains(KeyCode.VcLeftControl))
         {
             lock (_transmissionLock)
@@ -174,8 +178,8 @@ public class PushToTalkManager : IDisposable
             return;
         }
 
-        // Handle key release for all modes
-        if ((e.Data.KeyCode == _pushToTalkKey && !_isLlmMode && !_isCopyPromptMode && !_isVisionPttMode) || 
+        // Handle key release for all modes - ensure F1 release only processes when Ctrl is not pressed
+        if ((e.Data.KeyCode == _pushToTalkKey && !_isLlmMode && !_isCopyPromptMode && !_isVisionPttMode && !_activeModifiers.Contains(KeyCode.VcLeftControl)) || 
             (e.Data.KeyCode == _llmPromptKey && _isLlmMode) ||
             (e.Data.KeyCode == _llmPromptKey && _isCopyPromptMode) ||
             (e.Data.KeyCode == _visionCaptureKey && _isVisionPttMode))

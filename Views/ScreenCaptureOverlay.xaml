@@ -48,7 +48,7 @@
             <TextBlock Name="InstructionsText"
                        Canvas.Left="20"
                        Canvas.Top="20"
-                       Text="Drag to select area • ESC to cancel • ENTER for full screen"
+                       Text="Drag to select area - ESC to cancel - ENTER for full screen"
                        FontSize="16"
                        FontWeight="Bold"
                        Foreground="White"

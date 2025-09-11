@@ -2,31 +2,34 @@
 
 **"Care Less" - Inobtrusive Augments!**
 
+
 **Multi-Modal Voice-to-Text, AI Assistant & TTS for Windows** • Silent system tray interface • Built with .NET 8.0
 
 Transform your voice into text instantly, get AI-powered responses, combine clipboard content with voice prompts, analyze images, or have any text read aloud—all with simple hotkeys. No windows, no interruptions—just speak, see, and listen anywhere.
 
-**4/9/25:** [Careless-Canvas-NML](https://github.com/MushroomFleet/Careless-Canvas-NML)
-- Specially designed infinite canvas for your pastes 
-- takes advantage of NML (nested markup language) to save your work.
+
+**Related Project:** [Careless-Canvas-NML](https://github.com/MushroomFleet/Careless-Canvas-NML) - Infinite canvas for your pastes using nested markup language
+
 
 ## 🚀 Get Started Now - Download V3.7
 
 **Ready to boost your productivity?** 
 
-👉 **[Download Latest Portable Release (v3.7.0)](../../releases/latest)**
+👉 **[Download Latest Portable Release (v3.7)](../../releases/latest)**
+
 
 **What you get:**
 - ⚡ **Instant Setup** - Single portable executable, no installer needed
-- 🎯 **Super Lightweight** - Only 157MB total (including tiny GGML weights)
+- 🐱 **Neural TTS Included** - 277MB total with embedded CarelessKitten TTS
 - 🛡️ **Local AI Processing** - Whisper.net keeps your voice private
 - 🔧 **Just Need .NET 8.0** - Free Microsoft runtime (quick install)
 
-Extract, double-click, and start speaking! The app lives silently in your system tray.
+Extract, double-click, and start speaking! The app lives silently in your system tray with 8 neural voices ready.
 
 ---
 
 ## ✨ Core Features
+
 
 ### 🎙️ Sextuple Hotkey System
 - **F1**: **Speech-to-Text** → Hold, speak, release → Instant paste
@@ -67,30 +70,39 @@ Extract, double-click, and start speaking! The app lives silently in your system
 - **Ollama Integration**: **Local AI models** for privacy-focused processing (Llama, Mistral, Qwen, etc.)
 - **Dual Provider Choice**: Switch between cloud power and local privacy
 - **Customizable Prompts**: Configure system behavior for your needs
+
 - **Streaming Responses**: Real-time AI output for faster interaction
-- **Offline Capability**: Ollama models work without internet connection
+- **Offline Capability**: Full functionality without internet when using Ollama
 
-### 📋 Revived Transcription History
-- **System Tray Access** - Right-click tray icon → View transcription history
-- **Session Logging** - Track all your voice-to-text conversions
-- **Search & Review** - Find past transcriptions quickly
-- **Privacy Controls** - Enable/disable history as needed
+### 👁️ AI Vision Analysis  
+Advanced screen capture and image understanding:
+- **Drag-to-Select Interface**: Professional overlay with visual feedback and multi-monitor support
+- **Dual Vision Modes**: Quick capture (Shift+F3) or combined speech+vision analysis (Ctrl+F3)  
+- **Smart Image Processing**: Token-aware optimization and format detection for maximum API efficiency
+- **Vision Model Support**: Claude 3, GPT-4 Vision, LLaVA, and other vision-capable models
+- **Customizable Prompts**: Configure analysis behavior with preset options for common scenarios
+- **Fast Performance**: ~30ms screen capture using optimized BitBlt API
 
-### 🔊 Custom Audio Notifications
-- **Smart Feedback** - Know when recording starts/stops
-- **Custom Sounds** - Use your own audio files
-- **Per-Mode Alerts** - Different sounds for transcription vs AI responses
-- **Volume Control** - Adjust to your preference
+### 📋 Enhanced Clipboard Integration
+Intelligent clipboard workflow features:
+- **Speech Copy Prompt**: Ctrl+F2 automatically captures clipboard content and combines with voice for enhanced AI processing
+- **Context-Aware Processing**: AI receives both clipboard text and voice input for more informed responses
+- **Smart Text Detection**: Automatic content optimization for both TTS synthesis and AI analysis
+- **Universal Compatibility**: Works with any application that supports clipboard operations
 
-### 🔒 Privacy & Security
-- **Local Speech Processing**: Whisper runs entirely on your machine (120MB GGML weights)
-- **Encrypted API Storage**: Secure OpenRouter key management via Windows DPAPI
-- **No Data Sharing**: Your voice stays private (except for LLM requests you explicitly make)
+### 🔒 Privacy & Security Features
+- **Local Speech Processing**: Whisper.NET runs entirely on your machine
+- **Encrypted API Storage**: Secure key management via Windows DPAPI  
+- **No Data Sharing**: Voice data never leaves your computer (except explicit AI requests)
+- **Optional Logging**: Transcription history can be disabled for maximum privacy
+- **Open Source**: Complete transparency of data handling
 
-### 👻 Silent Operation
-- **System Tray Interface**: Lives quietly in background
-- **Zero Interruption**: Works seamlessly with any Windows application
-- **Minimal Resource Usage**: Efficient despite powerful AI capabilities
+### 🔧 System Integration
+- **Silent Operation**: Lives quietly in system tray with zero interruption
+- **Smart Notifications**: Customizable audio feedback for different operations
+- **Transcription History**: Search and manage past voice-to-text conversions
+- **Global Hotkeys**: System-wide operation in any Windows application
+- **Efficient Resource Usage**: Optimized performance despite powerful AI capabilities
 
 ## 🎯 Perfect For
 
@@ -190,6 +202,7 @@ Right-click the system tray icon to access comprehensive settings:
 - **Vision Model Compatibility**: Real-time validation of selected model's vision capabilities
 - **Test Integration**: Built-in test functionality to verify screen capture and AI analysis
 
+
 ### Text-to-Speech (NEW in v3.7.0)
 - **Voice Selection**: Choose from all available Windows SAPI voices with live preview
 - **Speech Rate Control**: Adjust speed from slow (-10) to fast (+10), with 0 as normal speed
@@ -233,6 +246,7 @@ Run popular open-source models locally:
 - **Code Llama**: Specialized for programming tasks
 - **Custom Models**: Support for any GGUF-compatible model
 
+
 ## 🛠️ Build from Source
 
 ```bash
@@ -244,7 +258,50 @@ dotnet run --project CarelessWhisperV2.csproj
 
 Requires .NET 8.0 SDK for development.
 
+## 📋 Prerequisites
+
+**Required**:
+- Windows 10/11 (64-bit)
+- .NET 8.0 Runtime ([Download free from Microsoft](https://dotnet.microsoft.com/download/dotnet/8.0))
+- Any microphone (built-in or external)
+
+**Optional**:  
+- OpenRouter API key for AI features (get free credits at [openrouter.ai](https://openrouter.ai))
+
+## ⚙️ Essential Settings
+
+**Right-click the system tray icon** to access settings for:
+- **Hotkeys**: Customize voice and AI hotkeys  
+- **Audio**: Select microphone and configure recording quality
+- **AI Providers**: Add OpenRouter API key or configure Ollama server
+- **Voice Models**: Choose Whisper model size (speed vs. accuracy)
+- **Privacy**: Control transcription history and data retention
+
+## 🔧 Technical Overview
+
+### Core Architecture
+- **Framework**: .NET 8.0 with dependency injection and modern WPF
+- **Audio Processing**: NAudio for high-quality voice recording
+- **Speech Recognition**: Whisper.NET with local GGML model processing  
+- **Neural TTS**: Embedded Python 3.11.9 with KittenTTS and advanced phoneme processing
+- **AI Integration**: Dual provider system (300+ cloud models + local models)
+- **System Integration**: SharpHook for global hotkeys, Windows DPAPI for secure storage
+
+### AI Model Support
+**Cloud Processing (OpenRouter)**: GPT-4o, Claude-3.5, Gemini Pro, Llama, Mistral, Qwen, and 300+ specialized models
+
+**Local Processing (Ollama)**: Llama 3.2, Mistral 7B/22B, Qwen 2.5, Code Llama, and custom GGUF models
+
+**Neural Text-to-Speech (CarelessKitten)**: 8 expressive KittenTTS voices with professional text preprocessing and multi-tier fallback architecture
+
+### Performance & Size
+- **Total Package**: 277MB (includes embedded Python + neural TTS + Whisper models)
+- **TTS Response**: ~100-200ms for typical clipboard content
+- **Screen Capture**: ~30ms using optimized BitBlt API
+- **Memory Usage**: Efficient resource management despite AI capabilities
+
 ## 🔐 Privacy & Security
+
 
 ### Local Processing (Speech-to-Text & TTS)
 - **No internet required**: All transcription and speech synthesis happens locally
@@ -391,6 +448,7 @@ Requires .NET 8.0 SDK for development.
 4. **Adjust image quality** - Balance between speed and vision model accuracy
 5. **Test functionality** - Built-in test button to verify vision capture works
 
+
 ### Clipboard Text-to-Speech (Ctrl+F1)
 1. **Copy any text** - From any application (Ctrl+C or right-click copy)
 2. **Press Ctrl+F1** - Instant speech synthesis begins
@@ -418,6 +476,8 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 
 ---
 
-**Made for developers, writers, and anyone who wants both instant transcription AND AI assistance at their fingertips.**
+**Made for developers, writers, and anyone who wants instant transcription, AI assistance, and neural TTS at their fingertips.**
+
 
 *V3.7.0: Where voice meets intelligence with TTS - Care Less, Achieve More.*
+

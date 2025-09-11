@@ -9,7 +9,9 @@ using CarelessWhisperV2.Services.OpenRouter;
 using CarelessWhisperV2.Services.Ollama;
 using CarelessWhisperV2.Services.AudioNotification;
 using CarelessWhisperV2.Services.Vision;
+
 using CarelessWhisperV2.Services.TTS;
+
 using CarelessWhisperV2.Models;
 using System.IO;
 using System.Windows;
@@ -28,7 +30,9 @@ public class TranscriptionOrchestrator : IDisposable
     private readonly IOllamaService _ollamaService; // NEW
     private readonly IAudioNotificationService _audioNotificationService; // NEW
     private readonly IVisionProcessingService _visionProcessingService; // NEW - Vision capture
+
     private readonly ITTSService _ttsService; // NEW - Text-to-Speech
+
     private readonly ILogger<TranscriptionOrchestrator> _logger;
     
     private string _currentRecordingPath = "";
@@ -50,7 +54,9 @@ public class TranscriptionOrchestrator : IDisposable
         IOllamaService ollamaService, // NEW
         IAudioNotificationService audioNotificationService, // NEW
         IVisionProcessingService visionProcessingService, // NEW - Vision capture
+
         ITTSService ttsService, // NEW - Text-to-Speech
+
         ILogger<TranscriptionOrchestrator> logger)
     {
         _hotkeyManager = hotkeyManager;
@@ -63,7 +69,9 @@ public class TranscriptionOrchestrator : IDisposable
         _ollamaService = ollamaService; // NEW
         _audioNotificationService = audioNotificationService; // NEW
         _visionProcessingService = visionProcessingService; // NEW - Vision capture
+
         _ttsService = ttsService; // NEW - Text-to-Speech
+
         _logger = logger;
 
         _hotkeyManager.TransmissionStarted += OnTransmissionStarted;
@@ -75,8 +83,10 @@ public class TranscriptionOrchestrator : IDisposable
         _hotkeyManager.VisionCaptureStarted += OnVisionCaptureStarted; // NEW for Shift+F3
         _hotkeyManager.VisionCaptureWithPromptStarted += OnVisionPttTransmissionStarted; // NEW for Ctrl+F3 PTT
         _hotkeyManager.VisionCaptureWithPromptEnded += OnVisionPttTransmissionEnded; // NEW for Ctrl+F3 PTT
+
         _hotkeyManager.TTSTriggered += OnTTSTriggered; // NEW for Ctrl+F1 TTS
         _hotkeyManager.TTSStopRequested += OnTTSStopRequested; // NEW for Escape key TTS stop
+
         
         // Load settings
         _ = Task.Run(LoadSettingsAsync);
@@ -1081,13 +1091,16 @@ public class TranscriptionOrchestrator : IDisposable
         }
     }
 
+
     // NEW TTS event handlers for Ctrl+F1 and Escape
     private async void OnTTSTriggered()
+
     {
         try
         {
             _logger.LogInformation("TTS triggered (Ctrl+F1)");
             
+
             if (!_settings.TTS.EnableTTS)
             {
                 _logger.LogInformation("TTS is disabled in settings");
@@ -1157,6 +1170,7 @@ public class TranscriptionOrchestrator : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to stop TTS: {Error}", ex.Message);
+
         }
     }
 

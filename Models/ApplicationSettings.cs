@@ -22,7 +22,9 @@ public class ApplicationSettings : IValidatableObject
     public OllamaSettings Ollama { get; set; } = new(); // NEW
     public AudioNotificationSettings AudioNotification { get; set; } = new(); // NEW
     public VisionSettings Vision { get; set; } = new(); // NEW V3.6.3
+
     public TTSSettings TTS { get; set; } = new(); // NEW for Text-to-Speech
+
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
