@@ -1,5 +1,7 @@
 # Careless Whisper V3
 
+![hotkeys](https://raw.githubusercontent.com/MushroomFleet/Careless-Whisper-V3/refs/heads/main/careless-whisper-hotkeys-crop.png)
+
 **"Care Less" - Inobtrusive Augments!**
 
 
@@ -480,5 +482,6 @@ This project implements production-ready .NET 8.0 patterns with comprehensive V3
 
 
 *V3.7.0: Where voice meets intelligence with TTS - Care Less, Achieve More.*
+
 
 
